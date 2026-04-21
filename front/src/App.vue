@@ -164,6 +164,125 @@ const useCasePointForm = ref({
   environmentalFactors: [3, 2, 2, 3, 3, 2, 2, 3]
 })
 
+
+const metricModules = {
+  loc: {
+    result: locResult,
+    loading: locLoading,
+    error: locError,
+    message: locMessage,
+    reportMessage: locReportMessage,
+    latest: fetchLatestLocResult,
+    analyze: analyzeProjectLoc,
+    report: exportLocReport,
+    reportFileName: 'loc-report.md',
+    successMessage: '代码行度量完成，结果已保存到本地任务文件。'
+  },
+  'control-flow': {
+    result: complexityResult,
+    loading: complexityLoading,
+    error: complexityError,
+    message: complexityMessage,
+    reportMessage: complexityReportMessage,
+    latest: fetchLatestComplexityResult,
+    analyze: analyzeProjectComplexity,
+    report: exportComplexityReport,
+    reportFileName: 'complexity-report.md',
+    successMessage: '圈复杂度分析完成，结果已保存到本地任务文件。'
+  },
+  'object-oriented': {
+    result: ooResult,
+    loading: ooLoading,
+    error: ooError,
+    message: ooMessage,
+    reportMessage: ooReportMessage,
+    latest: fetchLatestOoResult,
+    analyze: analyzeProjectOo,
+    report: exportOoReport,
+    reportFileName: 'object-oriented-report.md',
+    successMessage: '面向对象 CK/LK 度量完成，结果已保存到本地任务文件。'
+  },
+  estimation: {
+    result: estimationResult,
+    loading: estimationLoading,
+    error: estimationError,
+    message: estimationMessage,
+    reportMessage: estimationReportMessage,
+    latest: fetchLatestEstimationResult,
+    analyze: analyzeProjectEstimation,
+    report: exportEstimationReport,
+    reportFileName: 'estimation-report.md',
+    successMessage: '工作量、工期、人员和成本估算完成，结果已保存到本地任务文件。',
+    payload: () => ({
+      mode: estimationForm.value.mode,
+      kloc: estimationForm.value.kloc === '' ? null : Number(estimationForm.value.kloc),
+      costPerPersonMonth: Number(estimationForm.value.costPerPersonMonth) || 20000
+    })
+  },
+  ai: {
+    result: aiResult,
+    loading: aiLoading,
+    error: aiError,
+    message: aiMessage,
+    latest: fetchLatestAiResult,
+    analyze: analyzeProjectAi,
+    successMessage: '智能质量分析完成，结果已保存为 JSON 和 Markdown。',
+    localExport: () => {
+      if (!aiResult.value) {
+        aiError.value = '当前项目还没有智能分析结果'
+        return
+      }
+      downloadMarkdown(aiResult.value.markdown, 'ai-analysis.md')
+      aiMessage.value = '智能分析 Markdown 已下载。'
+    }
+  },
+  'function-point': {
+    result: functionPointResult,
+    loading: functionPointLoading,
+    error: functionPointError,
+    message: functionPointMessage,
+    reportMessage: functionPointReportMessage,
+    latest: fetchLatestFunctionPointResult,
+    analyze: analyzeProjectFunctionPoint,
+    report: exportFunctionPointReport,
+    reportFileName: 'function-point-report.md',
+    successMessage: '功能点度量完成，结果已保存到本地任务文件。',
+    beforeAnalyze: () => {
+      functionPointForm.value.generalSystemCharacteristicTotal = functionPointGscTotal()
+    },
+    payload: () => functionPointForm.value
+  },
+  'use-case': {
+    result: useCasePointResult,
+    loading: useCasePointLoading,
+    error: useCasePointError,
+    message: useCasePointMessage,
+    reportMessage: useCasePointReportMessage,
+    latest: fetchLatestUseCasePointResult,
+    analyze: analyzeProjectUseCasePoint,
+    report: exportUseCasePointReport,
+    reportFileName: 'use-case-point-report.md',
+    successMessage: '用例点估算完成，结果已保存到本地任务文件。',
+    beforeAnalyze: () => {
+      useCasePointForm.value.technicalFactorTotal = useCaseTechnicalTotal()
+      useCasePointForm.value.environmentalFactorTotal = useCaseEnvironmentalTotal()
+    },
+    payload: () => useCasePointForm.value
+  },
+  'model-analysis': {
+    result: modelResult,
+    loading: modelLoading,
+    error: modelError,
+    message: modelMessage,
+    reportMessage: modelReportMessage,
+    latest: fetchLatestModelResult,
+    analyze: analyzeProjectModel,
+    report: exportModelReport,
+    reportFileName: 'model-analysis-report.md',
+    successMessage: '模型文件度量完成，结果已保存到本地任务文件。'
+  }
+}
+
 const radarAxes = ['CBO', 'NOO', 'NOC', 'NOA', 'DIT', 'CS']
 const radarColors = ['blue', 'green', 'gold', 'red']
 
@@ -189,14 +308,7 @@ async function loadProjects() {
     if (!selectedProjectId.value && projects.value.length > 0) {
       selectedProjectId.value = projects.value[0].id
       await loadProjectFiles()
-      await loadLatestLocResult()
-      await loadLatestComplexityResult()
-      await loadLatestOoResult()
-      await loadLatestEstimationResult()
-      await loadLatestAiResult()
-      await loadLatestFunctionPointResult()
-      await loadLatestUseCasePointResult()
-      await loadLatestModelResult()
+      await loadLatestActiveMetricResult()
     }
   } catch (error) {
     projectError.value = error.message
@@ -220,14 +332,7 @@ async function submitProject() {
     selectedProjectId.value = result.data.id
     await loadProjectFiles()
     await loadFilesForProject(result.data.id)
-    locResult.value = null
-    complexityResult.value = null
-    ooResult.value = null
-    estimationResult.value = null
-    aiResult.value = null
-    functionPointResult.value = null
-    useCasePointResult.value = null
-    modelResult.value = null
+    resetMetricResults()
     activeMenu.value = 'project-management'
   } catch (error) {
     projectError.value = error.message
@@ -383,14 +488,7 @@ async function loadProjectFiles() {
 
 async function handleProjectSelectionChange() {
   await loadProjectFiles()
-  await loadLatestLocResult()
-  await loadLatestComplexityResult()
-  await loadLatestOoResult()
-  await loadLatestEstimationResult()
-  await loadLatestAiResult()
-  await loadLatestFunctionPointResult()
-  await loadLatestUseCasePointResult()
-  await loadLatestModelResult()
+  await loadLatestActiveMetricResult()
 }
 
 function handleFileChange(event) {
@@ -427,14 +525,7 @@ async function submitUpload() {
     selectedFile.value = null
     await loadProjectFiles()
     await loadFilesForProject(selectedProjectId.value)
-    locMessage.value = '文件已更新，可重新执行代码行度量。'
-    complexityMessage.value = '文件已更新，可重新执行圈复杂度分析。'
-    ooMessage.value = '文件已更新，可重新执行面向对象度量。'
-    estimationMessage.value = '文件已更新，可重新执行估算分析。'
-    aiMessage.value = '文件已更新，可重新执行智能分析。'
-    functionPointMessage.value = '文件已更新，可重新执行功能点度量。'
-    useCasePointMessage.value = '文件已更新，可重新执行用例点估算。'
-    modelMessage.value = '文件已更新，可重新执行模型文件度量。'
+    markMetricResultsStale('文件已更新，可按需重新执行当前度量。')
   } catch (error) {
     uploadError.value = error.message
   } finally {
@@ -462,14 +553,7 @@ async function submitManagementUpload(project) {
       [project.id]: null
     }
     await loadFilesForProject(project.id)
-    locMessage.value = '文件已更新，可重新执行代码行度量。'
-    complexityMessage.value = '文件已更新，可重新执行圈复杂度分析。'
-    ooMessage.value = '文件已更新，可重新执行面向对象度量。'
-    estimationMessage.value = '文件已更新，可重新执行估算分析。'
-    aiMessage.value = '文件已更新，可重新执行智能分析。'
-    functionPointMessage.value = '文件已更新，可重新执行功能点度量。'
-    useCasePointMessage.value = '文件已更新，可重新执行用例点估算。'
-    modelMessage.value = '文件已更新，可重新执行模型文件度量。'
+    markMetricResultsStale('文件已更新，可按需重新执行当前度量。')
   } catch (error) {
     managementError.value = error.message
   } finally {
@@ -492,14 +576,7 @@ async function removeUploadedFile(file) {
     uploadMessage.value = `已删除：${file.originalName}`
     await loadProjectFiles()
     await loadFilesForProject(selectedProjectId.value)
-    locMessage.value = '上传文件已变化，可重新执行代码行度量。'
-    complexityMessage.value = '上传文件已变化，可重新执行圈复杂度分析。'
-    ooMessage.value = '上传文件已变化，可重新执行面向对象度量。'
-    estimationMessage.value = '上传文件已变化，可重新执行估算分析。'
-    aiMessage.value = '上传文件已变化，可重新执行智能分析。'
-    functionPointMessage.value = '上传文件已变化，可重新执行功能点度量。'
-    useCasePointMessage.value = '上传文件已变化，可重新执行用例点估算。'
-    modelMessage.value = '上传文件已变化，可重新执行模型文件度量。'
+    markMetricResultsStale('上传文件已变化，可按需重新执行当前度量。')
   } catch (error) {
     uploadError.value = error.message
   }
@@ -516,316 +593,179 @@ async function removeManagementFile(project, file) {
     await deleteProjectFile(project.id, file.id)
     managementMessage.value = `已从“${project.name}”删除：${file.originalName}`
     await loadFilesForProject(project.id)
-    locMessage.value = '上传文件已变化，可重新执行代码行度量。'
-    complexityMessage.value = '上传文件已变化，可重新执行圈复杂度分析。'
-    ooMessage.value = '上传文件已变化，可重新执行面向对象度量。'
-    estimationMessage.value = '上传文件已变化，可重新执行估算分析。'
-    aiMessage.value = '上传文件已变化，可重新执行智能分析。'
-    functionPointMessage.value = '上传文件已变化，可重新执行功能点度量。'
-    useCasePointMessage.value = '上传文件已变化，可重新执行用例点估算。'
-    modelMessage.value = '上传文件已变化，可重新执行模型文件度量。'
+    markMetricResultsStale('上传文件已变化，可按需重新执行当前度量。')
   } catch (error) {
     managementError.value = error.message
   }
 }
 
-async function loadLatestLocResult() {
-  locError.value = ''
-  locMessage.value = ''
-  locResult.value = null
+
+function metricModule(key = activeMenu.value) {
+  return metricModules[key]
+}
+
+function resetMetricResults() {
+  Object.values(metricModules).forEach(module => {
+    module.result.value = null
+    module.message.value = ''
+    module.error.value = ''
+    if (module.reportMessage) {
+      module.reportMessage.value = ''
+    }
+  })
+}
+
+function markMetricResultsStale(message) {
+  Object.values(metricModules).forEach(module => {
+    module.message.value = message
+  })
+}
+
+async function loadLatestMetricResult(key = activeMenu.value) {
+  const module = metricModule(key)
+  if (!module || !module.latest) {
+    return
+  }
+  module.error.value = ''
+  module.message.value = ''
+  module.result.value = null
   if (!selectedProjectId.value) {
     return
   }
   try {
-    const result = await fetchLatestLocResult(selectedProjectId.value)
-    locResult.value = result.data
+    const result = await module.latest(selectedProjectId.value)
+    module.result.value = result.data
   } catch (error) {
-    locError.value = error.message
+    module.error.value = error.message
   }
+}
+
+async function loadLatestActiveMetricResult() {
+  await loadLatestMetricResult(activeMenu.value)
+}
+
+async function runMetricAnalysis(key = activeMenu.value) {
+  const module = metricModule(key)
+  if (!module || !module.analyze) {
+    return
+  }
+  module.error.value = ''
+  module.message.value = ''
+  if (!selectedProjectId.value) {
+    module.error.value = '请先选择项目'
+    return
+  }
+  module.loading.value = true
+  try {
+    module.beforeAnalyze?.()
+    const payload = module.payload ? module.payload() : undefined
+    const result = await module.analyze(selectedProjectId.value, payload)
+    module.result.value = result.data
+    module.message.value = module.successMessage
+    activeMenu.value = key
+  } catch (error) {
+    module.error.value = error.message
+  } finally {
+    module.loading.value = false
+  }
+}
+
+async function exportMetricMarkdown(key = activeMenu.value) {
+  const module = metricModule(key)
+  if (!module) {
+    return
+  }
+  module.error.value = ''
+  if (module.reportMessage) {
+    module.reportMessage.value = ''
+  }
+  if (module.localExport) {
+    module.localExport()
+    return
+  }
+  if (!selectedProjectId.value) {
+    module.error.value = '请先选择项目'
+    return
+  }
+  try {
+    const result = await module.report(selectedProjectId.value)
+    downloadMarkdown(result.data.content, module.reportFileName)
+    module.reportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
+  } catch (error) {
+    module.error.value = error.message
+  }
+}
+
+async function loadLatestLocResult() {
+  return loadLatestMetricResult('loc')
 }
 
 async function loadLatestComplexityResult() {
-  complexityError.value = ''
-  complexityMessage.value = ''
-  complexityResult.value = null
-  if (!selectedProjectId.value) {
-    return
-  }
-  try {
-    const result = await fetchLatestComplexityResult(selectedProjectId.value)
-    complexityResult.value = result.data
-  } catch (error) {
-    complexityError.value = error.message
-  }
+  return loadLatestMetricResult('control-flow')
 }
 
 async function loadLatestOoResult() {
-  ooError.value = ''
-  ooMessage.value = ''
-  ooResult.value = null
-  if (!selectedProjectId.value) {
-    return
-  }
-  try {
-    const result = await fetchLatestOoResult(selectedProjectId.value)
-    ooResult.value = result.data
-  } catch (error) {
-    ooError.value = error.message
-  }
+  return loadLatestMetricResult('object-oriented')
 }
 
 async function loadLatestEstimationResult() {
-  estimationError.value = ''
-  estimationMessage.value = ''
-  estimationResult.value = null
-  if (!selectedProjectId.value) {
-    return
-  }
-  try {
-    const result = await fetchLatestEstimationResult(selectedProjectId.value)
-    estimationResult.value = result.data
-  } catch (error) {
-    estimationError.value = error.message
-  }
+  return loadLatestMetricResult('estimation')
 }
 
 async function loadLatestAiResult() {
-  aiError.value = ''
-  aiMessage.value = ''
-  aiResult.value = null
-  if (!selectedProjectId.value) {
-    return
-  }
-  try {
-    const result = await fetchLatestAiResult(selectedProjectId.value)
-    aiResult.value = result.data
-  } catch (error) {
-    aiError.value = error.message
-  }
+  return loadLatestMetricResult('ai')
 }
 
 async function loadLatestFunctionPointResult() {
-  functionPointError.value = ''
-  functionPointMessage.value = ''
-  functionPointResult.value = null
-  if (!selectedProjectId.value) {
-    return
-  }
-  try {
-    const result = await fetchLatestFunctionPointResult(selectedProjectId.value)
-    functionPointResult.value = result.data
-  } catch (error) {
-    functionPointError.value = error.message
-  }
+  return loadLatestMetricResult('function-point')
 }
 
 async function loadLatestUseCasePointResult() {
-  useCasePointError.value = ''
-  useCasePointMessage.value = ''
-  useCasePointResult.value = null
-  if (!selectedProjectId.value) {
-    return
-  }
-  try {
-    const result = await fetchLatestUseCasePointResult(selectedProjectId.value)
-    useCasePointResult.value = result.data
-  } catch (error) {
-    useCasePointError.value = error.message
-  }
+  return loadLatestMetricResult('use-case')
 }
 
 async function loadLatestModelResult() {
-  modelError.value = ''
-  modelMessage.value = ''
-  modelResult.value = null
-  if (!selectedProjectId.value) {
-    return
-  }
-  try {
-    const result = await fetchLatestModelResult(selectedProjectId.value)
-    modelResult.value = result.data
-  } catch (error) {
-    modelError.value = error.message
-  }
+  return loadLatestMetricResult('model-analysis')
 }
 
 async function runLocAnalysis() {
-  locError.value = ''
-  locMessage.value = ''
-  if (!selectedProjectId.value) {
-    locError.value = '请先选择项目'
-    return
-  }
-  locLoading.value = true
-  try {
-    const result = await analyzeProjectLoc(selectedProjectId.value)
-    locResult.value = result.data
-    locMessage.value = '代码行度量完成，结果已保存到本地任务文件。'
-    activeMenu.value = 'loc'
-  } catch (error) {
-    locError.value = error.message
-  } finally {
-    locLoading.value = false
-  }
+  return runMetricAnalysis('loc')
 }
 
 async function exportLocMarkdown() {
-  locError.value = ''
-  locReportMessage.value = ''
-  if (!selectedProjectId.value) {
-    locError.value = '请先选择项目'
-    return
-  }
-  try {
-    const result = await exportLocReport(selectedProjectId.value)
-    downloadMarkdown(result.data.content, 'loc-report.md')
-    locReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
-  } catch (error) {
-    locError.value = error.message
-  }
+  return exportMetricMarkdown('loc')
 }
 
 async function runComplexityAnalysis() {
-  complexityError.value = ''
-  complexityMessage.value = ''
-  if (!selectedProjectId.value) {
-    complexityError.value = '请先选择项目'
-    return
-  }
-  complexityLoading.value = true
-  try {
-    const result = await analyzeProjectComplexity(selectedProjectId.value)
-    complexityResult.value = result.data
-    complexityMessage.value = '圈复杂度分析完成，结果已保存到本地任务文件。'
-    activeMenu.value = 'control-flow'
-  } catch (error) {
-    complexityError.value = error.message
-  } finally {
-    complexityLoading.value = false
-  }
+  return runMetricAnalysis('control-flow')
 }
 
 async function exportComplexityMarkdown() {
-  complexityError.value = ''
-  complexityReportMessage.value = ''
-  if (!selectedProjectId.value) {
-    complexityError.value = '请先选择项目'
-    return
-  }
-  try {
-    const result = await exportComplexityReport(selectedProjectId.value)
-    downloadMarkdown(result.data.content, 'complexity-report.md')
-    complexityReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
-  } catch (error) {
-    complexityError.value = error.message
-  }
+  return exportMetricMarkdown('control-flow')
 }
 
 async function runOoAnalysis() {
-  ooError.value = ''
-  ooMessage.value = ''
-  if (!selectedProjectId.value) {
-    ooError.value = '请先选择项目'
-    return
-  }
-  ooLoading.value = true
-  try {
-    const result = await analyzeProjectOo(selectedProjectId.value)
-    ooResult.value = result.data
-    ooMessage.value = '面向对象 CK/LK 度量完成，结果已保存到本地任务文件。'
-    activeMenu.value = 'object-oriented'
-  } catch (error) {
-    ooError.value = error.message
-  } finally {
-    ooLoading.value = false
-  }
+  return runMetricAnalysis('object-oriented')
 }
 
 async function exportOoMarkdown() {
-  ooError.value = ''
-  ooReportMessage.value = ''
-  if (!selectedProjectId.value) {
-    ooError.value = '请先选择项目'
-    return
-  }
-  try {
-    const result = await exportOoReport(selectedProjectId.value)
-    downloadMarkdown(result.data.content, 'object-oriented-report.md')
-    ooReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
-  } catch (error) {
-    ooError.value = error.message
-  }
+  return exportMetricMarkdown('object-oriented')
 }
 
 async function runEstimationAnalysis() {
-  estimationError.value = ''
-  estimationMessage.value = ''
-  if (!selectedProjectId.value) {
-    estimationError.value = '请先选择项目'
-    return
-  }
-  estimationLoading.value = true
-  try {
-    const payload = {
-      mode: estimationForm.value.mode,
-      kloc: estimationForm.value.kloc === '' ? null : Number(estimationForm.value.kloc),
-      costPerPersonMonth: Number(estimationForm.value.costPerPersonMonth) || 20000
-    }
-    const result = await analyzeProjectEstimation(selectedProjectId.value, payload)
-    estimationResult.value = result.data
-    estimationMessage.value = '工作量、工期、人员和成本估算完成，结果已保存到本地任务文件。'
-    activeMenu.value = 'estimation'
-  } catch (error) {
-    estimationError.value = error.message
-  } finally {
-    estimationLoading.value = false
-  }
+  return runMetricAnalysis('estimation')
 }
 
 async function exportEstimationMarkdown() {
-  estimationError.value = ''
-  estimationReportMessage.value = ''
-  if (!selectedProjectId.value) {
-    estimationError.value = '请先选择项目'
-    return
-  }
-  try {
-    const result = await exportEstimationReport(selectedProjectId.value)
-    downloadMarkdown(result.data.content, 'estimation-report.md')
-    estimationReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
-  } catch (error) {
-    estimationError.value = error.message
-  }
+  return exportMetricMarkdown('estimation')
 }
 
 async function runAiAnalysis() {
-  aiError.value = ''
-  aiMessage.value = ''
-  if (!selectedProjectId.value) {
-    aiError.value = '请先选择项目'
-    return
-  }
-  aiLoading.value = true
-  try {
-    const result = await analyzeProjectAi(selectedProjectId.value)
-    aiResult.value = result.data
-    aiMessage.value = '智能质量分析完成，结果已保存为 JSON 和 Markdown。'
-    activeMenu.value = 'ai'
-  } catch (error) {
-    aiError.value = error.message
-  } finally {
-    aiLoading.value = false
-  }
+  return runMetricAnalysis('ai')
 }
 
 function exportAiMarkdown() {
-  aiError.value = ''
-  if (!aiResult.value) {
-    aiError.value = '当前项目还没有智能分析结果'
-    return
-  }
-  downloadMarkdown(aiResult.value.markdown, 'ai-analysis.md')
-  aiMessage.value = '智能分析 Markdown 已下载。'
+  return exportMetricMarkdown('ai')
 }
 
 function clampScore(value) {
@@ -853,114 +793,27 @@ function useCaseEnvironmentalTotal() {
 }
 
 async function runFunctionPointAnalysis() {
-  functionPointError.value = ''
-  functionPointMessage.value = ''
-  if (!selectedProjectId.value) {
-    functionPointError.value = '请先选择项目'
-    return
-  }
-  functionPointLoading.value = true
-  try {
-    functionPointForm.value.generalSystemCharacteristicTotal = functionPointGscTotal()
-    const result = await analyzeProjectFunctionPoint(selectedProjectId.value, functionPointForm.value)
-    functionPointResult.value = result.data
-    functionPointMessage.value = '功能点度量完成，结果已保存到本地任务文件。'
-    activeMenu.value = 'function-point'
-  } catch (error) {
-    functionPointError.value = error.message
-  } finally {
-    functionPointLoading.value = false
-  }
+  return runMetricAnalysis('function-point')
 }
 
 async function exportFunctionPointMarkdown() {
-  functionPointError.value = ''
-  functionPointReportMessage.value = ''
-  if (!selectedProjectId.value) {
-    functionPointError.value = '请先选择项目'
-    return
-  }
-  try {
-    const result = await exportFunctionPointReport(selectedProjectId.value)
-    downloadMarkdown(result.data.content, 'function-point-report.md')
-    functionPointReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
-  } catch (error) {
-    functionPointError.value = error.message
-  }
+  return exportMetricMarkdown('function-point')
 }
 
 async function runUseCasePointAnalysis() {
-  useCasePointError.value = ''
-  useCasePointMessage.value = ''
-  if (!selectedProjectId.value) {
-    useCasePointError.value = '请先选择项目'
-    return
-  }
-  useCasePointLoading.value = true
-  try {
-    useCasePointForm.value.technicalFactorTotal = useCaseTechnicalTotal()
-    useCasePointForm.value.environmentalFactorTotal = useCaseEnvironmentalTotal()
-    const result = await analyzeProjectUseCasePoint(selectedProjectId.value, useCasePointForm.value)
-    useCasePointResult.value = result.data
-    useCasePointMessage.value = '用例点估算完成，结果已保存到本地任务文件。'
-    activeMenu.value = 'use-case'
-  } catch (error) {
-    useCasePointError.value = error.message
-  } finally {
-    useCasePointLoading.value = false
-  }
+  return runMetricAnalysis('use-case')
 }
 
 async function exportUseCasePointMarkdown() {
-  useCasePointError.value = ''
-  useCasePointReportMessage.value = ''
-  if (!selectedProjectId.value) {
-    useCasePointError.value = '请先选择项目'
-    return
-  }
-  try {
-    const result = await exportUseCasePointReport(selectedProjectId.value)
-    downloadMarkdown(result.data.content, 'use-case-point-report.md')
-    useCasePointReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
-  } catch (error) {
-    useCasePointError.value = error.message
-  }
+  return exportMetricMarkdown('use-case')
 }
 
 async function runModelAnalysis() {
-  modelError.value = ''
-  modelMessage.value = ''
-  if (!selectedProjectId.value) {
-    modelError.value = '请先选择项目'
-    return
-  }
-  modelLoading.value = true
-  try {
-    const result = await analyzeProjectModel(selectedProjectId.value)
-    modelResult.value = result.data
-    modelMessage.value = '模型文件度量完成，结果已保存到本地任务文件。'
-    activeMenu.value = 'model-analysis'
-  } catch (error) {
-    modelError.value = error.message
-  } finally {
-    modelLoading.value = false
-  }
+  return runMetricAnalysis('model-analysis')
 }
 
 async function exportModelMarkdown() {
-  modelError.value = ''
-  modelReportMessage.value = ''
-  if (!selectedProjectId.value) {
-    modelError.value = '请先选择项目'
-    return
-  }
-  try {
-    const result = await exportModelReport(selectedProjectId.value)
-    downloadMarkdown(result.data.content, 'model-analysis-report.md')
-    modelReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
-  } catch (error) {
-    modelError.value = error.message
-  }
+  return exportMetricMarkdown('model-analysis')
 }
 
 async function exportXml() {
@@ -1140,11 +993,12 @@ function isLegacyComplexityResult() {
   return complexityResult.value && !Array.isArray(complexityResult.value.files)
 }
 
-function handleMenuClick(item) {
+async function handleMenuClick(item) {
   if (!item.implemented) {
     return
   }
   activeMenu.value = item.key
+  await loadLatestActiveMetricResult()
 }
 
 function percent(value) {
@@ -2539,90 +2393,11 @@ onMounted(async () => {
               <button type="button" class="secondary-button" @click="exportComprehensiveMarkdown">
                 导出综合报告
               </button>
-              <button
-                v-if="activeMenu === 'loc'"
-                type="button"
-                class="primary-button"
-                :disabled="locLoading"
-                @click="runLocAnalysis"
-              >
-                {{ locLoading ? '分析中...' : '开始 LoC 分析' }}
-              </button>
-              <button
-                v-else-if="activeMenu === 'control-flow'"
-                type="button"
-                class="primary-button"
-                :disabled="complexityLoading"
-                @click="runComplexityAnalysis"
-              >
-                {{ complexityLoading ? '分析中...' : '开始复杂度分析' }}
-              </button>
-              <button
-                v-else-if="activeMenu === 'object-oriented'"
-                type="button"
-                class="primary-button"
-                :disabled="ooLoading"
-                @click="runOoAnalysis"
-              >
-                {{ ooLoading ? '分析中...' : '开始 CK/LK 分析' }}
-              </button>
-              <button
-                v-else-if="activeMenu === 'model-analysis'"
-                type="button"
-                class="primary-button"
-                :disabled="modelLoading"
-                @click="runModelAnalysis"
-              >
-                {{ modelLoading ? '分析中...' : '模型文件度量' }}
-              </button>
-              <button
-                v-else-if="activeMenu === 'function-point'"
-                type="button"
-                class="primary-button"
-                :disabled="functionPointLoading"
-                @click="runFunctionPointAnalysis"
-              >
-                {{ functionPointLoading ? '计算中...' : '功能点度量' }}
-              </button>
-              <button
-                v-else-if="activeMenu === 'use-case'"
-                type="button"
-                class="primary-button"
-                :disabled="useCasePointLoading"
-                @click="runUseCasePointAnalysis"
-              >
-                {{ useCasePointLoading ? '估算中...' : '用例点估算' }}
-              </button>
-              <button
-                v-else-if="activeMenu === 'estimation'"
-                type="button"
-                class="primary-button"
-                :disabled="estimationLoading"
-                @click="runEstimationAnalysis"
-              >
-                {{ estimationLoading ? '估算中...' : '开始估算' }}
-              </button>
-              <button
-                v-else-if="activeMenu === 'ai'"
-                type="button"
-                class="primary-button"
-                :disabled="aiLoading"
-                @click="runAiAnalysis"
-              >
-                {{ aiLoading ? '分析中...' : 'AI 智能分析' }}
-              </button>
-              <button v-else type="button" class="primary-button disabled-button" disabled title="请选择一个分析模块">
-                开始分析
-              </button>
             </div>
             <p v-if="xmlExportMessage" class="form-message success">{{ xmlExportMessage }}</p>
             <p v-if="xmlExportError" class="form-message error">{{ xmlExportError }}</p>
             <p v-if="comprehensiveReportMessage" class="form-message success">{{ comprehensiveReportMessage }}</p>
             <p v-if="comprehensiveReportError" class="form-message error">{{ comprehensiveReportError }}</p>
-            <button type="button" class="ai-button" :disabled="aiLoading" @click="runAiAnalysis">
-              {{ aiLoading ? '智能分析中...' : 'AI 智能分析' }}
-            </button>
-            <p class="todo-hint">智能分析默认使用本地规则生成建议，可在后续扩展为外部大模型接口。</p>
           </aside>
         </div>
         </template>

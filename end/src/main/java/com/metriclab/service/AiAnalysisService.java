@@ -13,6 +13,9 @@ import com.metriclab.model.dto.MethodComplexityMetric;
 import com.metriclab.model.dto.ObjectOrientedAnalysisResult;
 import com.metriclab.model.dto.UseCasePointResult;
 import com.metriclab.storage.FileStorageService;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -35,6 +38,8 @@ import java.util.UUID;
 
 @Service
 public class AiAnalysisService {
+
+    private static final Logger log = LoggerFactory.getLogger(AiAnalysisService.class);
 
     private final FileStorageService fileStorageService;
     private final LocAnalysisService locAnalysisService;
@@ -69,6 +74,19 @@ public class AiAnalysisService {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(Math.max(5, largeModelProperties.getTimeoutSeconds())))
                 .build();
+    }
+
+    @PostConstruct
+    public void logLargeModelConfiguration() {
+        log.info("Large model configuration loaded: enabled={}, effectiveEnabled={}, provider={}, apiKeyConfigured={}, model={}, baseUrlConfigured={}, reasoningEffort={}, maxCompletionTokens={}",
+                largeModelProperties.isEnabled(),
+                isLargeModelConfigured(),
+                largeModelProperties.getProvider(),
+                !isBlank(largeModelProperties.getApiKey()),
+                largeModelProperties.getModel(),
+                !isBlank(largeModelProperties.getBaseUrl()),
+                largeModelProperties.getReasoningEffort(),
+                largeModelProperties.getMaxCompletionTokens());
     }
 
     public synchronized AiAnalysisResult analyzeProject(String projectId) throws IOException {
@@ -128,11 +146,16 @@ public class AiAnalysisService {
             FunctionPointResult functionPoint,
             UseCasePointResult useCasePoint
     ) {
-        if (!largeModelProperties.isEnabled()
-                || isBlank(largeModelProperties.getApiKey())
-                || isBlank(largeModelProperties.getModel())
-                || isBlank(largeModelProperties.getBaseUrl())) {
+        if (!isLargeModelConfigured()) {
+            log.info("Large model analysis skipped: enabled={}, effectiveEnabled=false, apiKeyConfigured={}, modelConfigured={}, baseUrlConfigured={}",
+                    largeModelProperties.isEnabled(),
+                    !isBlank(largeModelProperties.getApiKey()),
+                    !isBlank(largeModelProperties.getModel()),
+                    !isBlank(largeModelProperties.getBaseUrl()));
             return null;
+        }
+        if (!largeModelProperties.isEnabled()) {
+            log.warn("Large model enabled flag is false, but API key/model/baseUrl are configured; proceeding with large model call for experiment validation.");
         }
         try {
             String prompt = buildLargeModelPrompt(projectId, loc, complexity, oo, estimation, functionPoint, useCasePoint);
@@ -140,11 +163,12 @@ public class AiAnalysisService {
             payload.put("model", largeModelProperties.getModel());
             payload.put("temperature", 0.2);
             payload.put("max_completion_tokens", Math.max(512, largeModelProperties.getMaxCompletionTokens()));
+            payload.put("response_format", Map.of("type", "json_object"));
             if (!isBlank(largeModelProperties.getReasoningEffort())) {
                 payload.put("reasoning_effort", largeModelProperties.getReasoningEffort());
             }
             payload.put("messages", List.of(
-                    Map.of("role", "system", "content", "你是软件质量保证课程实验中的软件度量专家。只输出合法 JSON，不要输出 Markdown。"),
+                    Map.of("role", "system", "content", "你是软件质量保证课程实验中的软件度量专家。必须只输出一个合法 JSON 对象，不要输出 Markdown，不要解释，不要代码块。"),
                     Map.of("role", "user", "content", prompt)
             ));
             HttpRequest request = HttpRequest.newBuilder()
@@ -156,15 +180,18 @@ public class AiAnalysisService {
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.warn("Large model analysis failed with HTTP status {} and response body: {}", response.statusCode(), truncate(response.body(), 600));
                 return null;
             }
             JsonNode root = objectMapper.readTree(response.body());
             String content = root.path("choices").path(0).path("message").path("content").asText("");
             if (isBlank(content)) {
+                log.warn("Large model analysis failed: empty assistant content. Raw response: {}", truncate(response.body(), 600));
                 return null;
             }
             return parseLargeModelAnswer(content);
-        } catch (Exception ignored) {
+        } catch (Exception exception) {
+            log.warn("Large model analysis failed and will fallback to local rules: {}", exception.getMessage());
             return null;
         }
     }
@@ -219,7 +246,7 @@ public class AiAnalysisService {
         );
         return "请根据以下软件度量 JSON 摘要生成质量分析。要求返回严格 JSON，字段为："
                 + "overallAssessment 字符串，riskItems 字符串数组，refactoringSuggestions 字符串数组，testSuggestions 字符串数组。"
-                + "每个数组保留 3 到 6 条，内容面向 Java 项目质量改进，不要编造源代码细节。\n"
+                + "数组元素必须是字符串，不要使用对象。每个数组保留 3 到 6 条，内容面向 Java 项目质量改进，不要编造源代码细节。\n"
                 + objectMapper.writeValueAsString(summary);
     }
 
@@ -244,12 +271,10 @@ public class AiAnalysisService {
 
     private String extractJson(String content) {
         String trimmed = content.trim();
-        if (trimmed.startsWith("```")) {
-            int firstBrace = trimmed.indexOf('{');
-            int lastBrace = trimmed.lastIndexOf('}');
-            if (firstBrace >= 0 && lastBrace > firstBrace) {
-                return trimmed.substring(firstBrace, lastBrace + 1);
-            }
+        int firstBrace = trimmed.indexOf('{');
+        int lastBrace = trimmed.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            return trimmed.substring(firstBrace, lastBrace + 1);
         }
         return trimmed;
     }
@@ -260,7 +285,7 @@ public class AiAnalysisService {
             return values;
         }
         node.forEach(item -> {
-            String value = item.asText("");
+            String value = item.isTextual() ? item.asText("") : summarizeObjectItem(item);
             if (!isBlank(value)) {
                 values.add(value);
             }
@@ -268,8 +293,44 @@ public class AiAnalysisService {
         return values;
     }
 
+    private String summarizeObjectItem(JsonNode item) {
+        if (item == null || item.isNull()) {
+            return "";
+        }
+        String[] preferredFields = {
+                "riskDescription",
+                "suggestionContent",
+                "testContent",
+                "description",
+                "content",
+                "reason",
+                "message"
+        };
+        for (String field : preferredFields) {
+            String value = item.path(field).asText("");
+            if (!isBlank(value)) {
+                String reason = item.path("reason").asText("");
+                return isBlank(reason) || value.equals(reason) ? value : value + "（原因：" + reason + "）";
+            }
+        }
+        return item.toString();
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private boolean isLargeModelConfigured() {
+        return !isBlank(largeModelProperties.getApiKey())
+                && !isBlank(largeModelProperties.getModel())
+                && !isBlank(largeModelProperties.getBaseUrl());
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength) + "...";
     }
 
     public AiAnalysisResult latestResult(String projectId) throws IOException {

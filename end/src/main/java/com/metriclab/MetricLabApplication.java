@@ -43,13 +43,29 @@ public class MetricLabApplication {
                 }
                 String key = trimmed.substring(0, equalsIndex).trim();
                 String value = unquote(trimmed.substring(equalsIndex + 1).trim());
-                if (System.getenv(key) == null && System.getProperty(key) == null) {
-                    System.setProperty(key, value);
+                System.setProperty(key, value);
+                String springPropertyKey = toSpringPropertyKey(key);
+                if (springPropertyKey != null) {
+                    System.setProperty(springPropertyKey, value);
                 }
             }
         } catch (IOException ignored) {
             // .env is optional; startup should continue with regular environment variables.
         }
+    }
+
+    private static String toSpringPropertyKey(String key) {
+        return switch (key) {
+            case "LARGE_MODEL_ENABLED" -> "metric.large-model.enabled";
+            case "LARGE_MODEL_PROVIDER" -> "metric.large-model.provider";
+            case "LARGE_MODEL_BASE_URL" -> "metric.large-model.base-url";
+            case "LARGE_MODEL_API_KEY", "ARK_API_KEY" -> "metric.large-model.api-key";
+            case "LARGE_MODEL_MODEL", "ARK_MODEL" -> "metric.large-model.model";
+            case "LARGE_MODEL_REASONING_EFFORT", "ARK_REASONING_EFFORT" -> "metric.large-model.reasoning-effort";
+            case "LARGE_MODEL_MAX_COMPLETION_TOKENS", "ARK_MAX_COMPLETION_TOKENS" -> "metric.large-model.max-completion-tokens";
+            case "LARGE_MODEL_TIMEOUT_SECONDS" -> "metric.large-model.timeout-seconds";
+            default -> null;
+        };
     }
 
     private static String unquote(String value) {
