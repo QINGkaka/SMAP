@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: metric-lab-backend
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 120MB
+
+metric:
+  storage:
+    root: ../metric-data
+  large-model:
+    enabled: false
+    provider: openai-compatible
+    base-url: ""
+    api-key: ${LARGE_MODEL_API_KEY:}
+    model: ""
+    timeout-seconds: 60
