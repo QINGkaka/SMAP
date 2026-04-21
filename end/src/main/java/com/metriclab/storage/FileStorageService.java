@@ -60,6 +60,10 @@ public class FileStorageService {
         return rootPath.resolve("projects.json");
     }
 
+    public Path thresholdsPath() {
+        return rootPath.resolve("config").resolve("thresholds.json");
+    }
+
     public Path projectDirectory(String projectId) {
         return rootPath.resolve("projects").resolve(projectId);
     }
@@ -100,6 +104,22 @@ public class FileStorageService {
 
     public Path latestEstimationResultPath(String projectId) {
         return tasksDirectory(projectId).resolve("latest-estimation-result.json");
+    }
+
+    public Path latestFunctionPointResultPath(String projectId) {
+        return tasksDirectory(projectId).resolve("latest-function-point-result.json");
+    }
+
+    public Path latestUseCasePointResultPath(String projectId) {
+        return tasksDirectory(projectId).resolve("latest-use-case-point-result.json");
+    }
+
+    public Path latestModelAnalysisResultPath(String projectId) {
+        return tasksDirectory(projectId).resolve("latest-model-analysis-result.json");
+    }
+
+    public Path latestAiAnalysisResultPath(String projectId) {
+        return tasksDirectory(projectId).resolve("latest-ai-analysis-result.json");
     }
 
     public Path reportsDirectory(String projectId) {

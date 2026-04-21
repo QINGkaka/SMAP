@@ -1,36 +1,54 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import {
+  analyzeProjectAi,
   analyzeProjectComplexity,
   analyzeProjectEstimation,
+  analyzeProjectFunctionPoint,
   analyzeProjectLoc,
+  analyzeProjectModel,
   analyzeProjectOo,
+  analyzeProjectUseCasePoint,
   createProject,
   deleteProject,
   deleteProjectFile,
   exportComplexityReport,
   exportEstimationReport,
+  exportFunctionPointReport,
   exportLocReport,
+  exportModelReport,
   exportOoReport,
+  exportUseCasePointReport,
+  exportComprehensiveReport,
+  exportProjectXml,
   fetchHealth,
   fetchLatestComplexityResult,
   fetchLatestEstimationResult,
+  fetchLatestAiResult,
+  fetchLatestFunctionPointResult,
   fetchLatestLocResult,
+  fetchLatestModelResult,
   fetchLatestOoResult,
+  fetchLatestUseCasePointResult,
+  fetchProjectTasks,
   fetchProjectFiles,
   fetchProjects,
+  fetchThresholds,
+  saveThresholds,
+  updateProject,
   uploadProjectFile
 } from './services/api'
 
 const menus = [
   { key: 'project-management', label: '项目管理', icon: '▣', implemented: true },
-  { key: 'function-point', label: '功能点度量', icon: '◆', implemented: false },
-  { key: 'use-case', label: '用例图度量', icon: '⬟', implemented: false },
+  { key: 'function-point', label: '功能点度量', icon: '◆', implemented: true },
+  { key: 'use-case', label: '用例图度量', icon: '⬟', implemented: true },
+  { key: 'model-analysis', label: '模型文件度量', icon: '◫', implemented: true },
   { key: 'object-oriented', label: '面向对象度量', icon: '▰', implemented: true },
   { key: 'control-flow', label: '控制流图度量', icon: '⌁', implemented: true },
   { key: 'loc', label: '代码行度量', icon: '≡', implemented: true },
   { key: 'estimation', label: '估算分析', icon: '◇', implemented: true },
-  { key: 'ai', label: '智能分析', icon: '✦', implemented: false }
+  { key: 'ai', label: '智能分析', icon: '✦', implemented: true }
 ]
 
 const activeMenu = ref('project-management')
@@ -48,8 +66,10 @@ const projectFileMap = ref({})
 const managementSelectedFiles = ref({})
 const managementUploadLoading = ref({})
 const fileListState = ref({})
+const projectTaskMap = ref({})
 const managementMessage = ref('')
 const managementError = ref('')
+const editingProjectId = ref('')
 const uploadLoading = ref(false)
 const uploadMessage = ref('')
 const uploadError = ref('')
@@ -73,25 +93,79 @@ const estimationLoading = ref(false)
 const estimationError = ref('')
 const estimationMessage = ref('')
 const estimationReportMessage = ref('')
+const xmlExportMessage = ref('')
+const xmlExportError = ref('')
+const comprehensiveReportMessage = ref('')
+const comprehensiveReportError = ref('')
+const aiResult = ref(null)
+const aiLoading = ref(false)
+const aiError = ref('')
+const aiMessage = ref('')
+const functionPointResult = ref(null)
+const functionPointLoading = ref(false)
+const functionPointError = ref('')
+const functionPointMessage = ref('')
+const functionPointReportMessage = ref('')
+const useCasePointResult = ref(null)
+const useCasePointLoading = ref(false)
+const useCasePointError = ref('')
+const useCasePointMessage = ref('')
+const useCasePointReportMessage = ref('')
+const modelResult = ref(null)
+const modelLoading = ref(false)
+const modelError = ref('')
+const modelMessage = ref('')
+const modelReportMessage = ref('')
 const clipboardMessage = ref('')
 const projectForm = ref({
   name: '',
   language: 'Java',
   description: ''
 })
+const thresholdConfig = ref({})
+const thresholdMessage = ref('')
+const thresholdError = ref('')
 const estimationForm = ref({
   mode: 'ORGANIC',
   kloc: '',
   costPerPersonMonth: 20000
 })
+const gscLabels = [
+  '数据通信', '分布式数据处理', '性能', '重用性', '联机数据输入', '操作易用性', '联机更新',
+  '复杂处理', '安装方便性', '运行方便性', '多站点部署', '变更便利性', '事务率', '最终用户效率'
+]
+const technicalFactorLabels = [
+  '分布式系统', '响应/吞吐性能', '终端用户效率', '复杂内部处理', '代码复用性', '易安装性', '易用性',
+  '可移植性', '易修改性', '并发性', '安全特性', '第三方访问', '用户培训'
+]
+const environmentalFactorLabels = [
+  '过程熟悉度', '应用经验', '面向对象经验', '主分析师能力', '团队积极性', '需求稳定性', '兼职人员', '困难语言'
+]
+const functionPointForm = ref({
+  externalInputs: { low: 1, average: 2, high: 0 },
+  externalOutputs: { low: 1, average: 1, high: 0 },
+  externalInquiries: { low: 1, average: 1, high: 0 },
+  internalLogicalFiles: { low: 1, average: 0, high: 0 },
+  externalInterfaceFiles: { low: 0, average: 1, high: 0 },
+  generalSystemCharacteristicTotal: 35,
+  generalSystemCharacteristics: [3, 2, 3, 2, 3, 3, 2, 3, 2, 3, 2, 3, 2, 2]
+})
+const useCasePointForm = ref({
+  simpleActors: 1,
+  averageActors: 1,
+  complexActors: 0,
+  simpleUseCases: 2,
+  averageUseCases: 1,
+  complexUseCases: 0,
+  technicalFactorTotal: 30,
+  environmentalFactorTotal: 20,
+  productivityHoursPerUseCasePoint: 20,
+  technicalFactors: [2, 3, 2, 3, 2, 2, 3, 2, 2, 2, 2, 2, 3],
+  environmentalFactors: [3, 2, 2, 3, 3, 2, 2, 3]
+})
 
 const radarAxes = ['CBO', 'NOO', 'NOC', 'NOA', 'DIT', 'CS']
-const mockClasses = [
-  { name: 'OrderService', values: [78, 70, 15, 62, 44, 86], color: '#4f6fd8' },
-  { name: 'Student', values: [46, 42, 18, 55, 72, 62], color: '#61a875' },
-  { name: 'Course', values: [32, 34, 12, 38, 58, 48], color: '#f2c86b' },
-  { name: 'Project', values: [55, 50, 22, 44, 35, 69], color: '#e87973' }
-]
+const radarColors = ['blue', 'green', 'gold', 'red']
 
 async function loadHealth() {
   try {
@@ -111,6 +185,7 @@ async function loadProjects() {
     const result = await fetchProjects()
     projects.value = result.data
     await loadAllProjectFiles(result.data)
+    await loadAllProjectTasks(result.data)
     if (!selectedProjectId.value && projects.value.length > 0) {
       selectedProjectId.value = projects.value[0].id
       await loadProjectFiles()
@@ -118,6 +193,10 @@ async function loadProjects() {
       await loadLatestComplexityResult()
       await loadLatestOoResult()
       await loadLatestEstimationResult()
+      await loadLatestAiResult()
+      await loadLatestFunctionPointResult()
+      await loadLatestUseCasePointResult()
+      await loadLatestModelResult()
     }
   } catch (error) {
     projectError.value = error.message
@@ -145,6 +224,10 @@ async function submitProject() {
     complexityResult.value = null
     ooResult.value = null
     estimationResult.value = null
+    aiResult.value = null
+    functionPointResult.value = null
+    useCasePointResult.value = null
+    modelResult.value = null
     activeMenu.value = 'project-management'
   } catch (error) {
     projectError.value = error.message
@@ -173,6 +256,10 @@ async function removeProject(project) {
       complexityResult.value = null
       ooResult.value = null
       estimationResult.value = null
+      aiResult.value = null
+      functionPointResult.value = null
+      useCasePointResult.value = null
+      modelResult.value = null
     }
     await loadProjects()
     await loadAllProjectFiles()
@@ -195,6 +282,66 @@ async function loadAllProjectFiles(projectList = projects.value) {
     }
   }))
   projectFileMap.value = Object.fromEntries(entries)
+}
+
+
+async function loadAllProjectTasks(projectList = projects.value) {
+  if (!projectList || projectList.length === 0) {
+    projectTaskMap.value = {}
+    return
+  }
+  const entries = await Promise.all(projectList.map(async project => {
+    try {
+      const result = await fetchProjectTasks(project.id)
+      return [project.id, result.data]
+    } catch {
+      return [project.id, []]
+    }
+  }))
+  projectTaskMap.value = Object.fromEntries(entries)
+}
+
+function projectTasks(projectId) {
+  return projectTaskMap.value[projectId] || []
+}
+
+async function loadThresholdConfig() {
+  thresholdError.value = ''
+  try {
+    const result = await fetchThresholds()
+    thresholdConfig.value = result.data
+  } catch (error) {
+    thresholdError.value = error.message
+  }
+}
+
+async function submitThresholdConfig() {
+  thresholdError.value = ''
+  thresholdMessage.value = ''
+  try {
+    const result = await saveThresholds(thresholdConfig.value)
+    thresholdConfig.value = result.data
+    thresholdMessage.value = '阈值配置已保存到本地 thresholds.json。'
+  } catch (error) {
+    thresholdError.value = error.message
+  }
+}
+
+async function importSampleProject() {
+  projectError.value = ''
+  projectMessage.value = ''
+  try {
+    const result = await createProject({
+      name: `JavaMetricLab 示例项目 ${projects.value.length + 1}`,
+      language: 'Java',
+      description: '用于课堂演示的软件度量样例项目，可继续上传 Java 或 UML/XMI 文件。'
+    })
+    projectMessage.value = `已导入示例项目：${result.data.name}`
+    selectedProjectId.value = result.data.id
+    await loadProjects()
+  } catch (error) {
+    projectError.value = error.message
+  }
 }
 
 async function loadFilesForProject(projectId) {
@@ -240,6 +387,10 @@ async function handleProjectSelectionChange() {
   await loadLatestComplexityResult()
   await loadLatestOoResult()
   await loadLatestEstimationResult()
+  await loadLatestAiResult()
+  await loadLatestFunctionPointResult()
+  await loadLatestUseCasePointResult()
+  await loadLatestModelResult()
 }
 
 function handleFileChange(event) {
@@ -280,6 +431,10 @@ async function submitUpload() {
     complexityMessage.value = '文件已更新，可重新执行圈复杂度分析。'
     ooMessage.value = '文件已更新，可重新执行面向对象度量。'
     estimationMessage.value = '文件已更新，可重新执行估算分析。'
+    aiMessage.value = '文件已更新，可重新执行智能分析。'
+    functionPointMessage.value = '文件已更新，可重新执行功能点度量。'
+    useCasePointMessage.value = '文件已更新，可重新执行用例点估算。'
+    modelMessage.value = '文件已更新，可重新执行模型文件度量。'
   } catch (error) {
     uploadError.value = error.message
   } finally {
@@ -311,6 +466,10 @@ async function submitManagementUpload(project) {
     complexityMessage.value = '文件已更新，可重新执行圈复杂度分析。'
     ooMessage.value = '文件已更新，可重新执行面向对象度量。'
     estimationMessage.value = '文件已更新，可重新执行估算分析。'
+    aiMessage.value = '文件已更新，可重新执行智能分析。'
+    functionPointMessage.value = '文件已更新，可重新执行功能点度量。'
+    useCasePointMessage.value = '文件已更新，可重新执行用例点估算。'
+    modelMessage.value = '文件已更新，可重新执行模型文件度量。'
   } catch (error) {
     managementError.value = error.message
   } finally {
@@ -337,6 +496,10 @@ async function removeUploadedFile(file) {
     complexityMessage.value = '上传文件已变化，可重新执行圈复杂度分析。'
     ooMessage.value = '上传文件已变化，可重新执行面向对象度量。'
     estimationMessage.value = '上传文件已变化，可重新执行估算分析。'
+    aiMessage.value = '上传文件已变化，可重新执行智能分析。'
+    functionPointMessage.value = '上传文件已变化，可重新执行功能点度量。'
+    useCasePointMessage.value = '上传文件已变化，可重新执行用例点估算。'
+    modelMessage.value = '上传文件已变化，可重新执行模型文件度量。'
   } catch (error) {
     uploadError.value = error.message
   }
@@ -357,6 +520,10 @@ async function removeManagementFile(project, file) {
     complexityMessage.value = '上传文件已变化，可重新执行圈复杂度分析。'
     ooMessage.value = '上传文件已变化，可重新执行面向对象度量。'
     estimationMessage.value = '上传文件已变化，可重新执行估算分析。'
+    aiMessage.value = '上传文件已变化，可重新执行智能分析。'
+    functionPointMessage.value = '上传文件已变化，可重新执行功能点度量。'
+    useCasePointMessage.value = '上传文件已变化，可重新执行用例点估算。'
+    modelMessage.value = '上传文件已变化，可重新执行模型文件度量。'
   } catch (error) {
     managementError.value = error.message
   }
@@ -419,6 +586,66 @@ async function loadLatestEstimationResult() {
     estimationResult.value = result.data
   } catch (error) {
     estimationError.value = error.message
+  }
+}
+
+async function loadLatestAiResult() {
+  aiError.value = ''
+  aiMessage.value = ''
+  aiResult.value = null
+  if (!selectedProjectId.value) {
+    return
+  }
+  try {
+    const result = await fetchLatestAiResult(selectedProjectId.value)
+    aiResult.value = result.data
+  } catch (error) {
+    aiError.value = error.message
+  }
+}
+
+async function loadLatestFunctionPointResult() {
+  functionPointError.value = ''
+  functionPointMessage.value = ''
+  functionPointResult.value = null
+  if (!selectedProjectId.value) {
+    return
+  }
+  try {
+    const result = await fetchLatestFunctionPointResult(selectedProjectId.value)
+    functionPointResult.value = result.data
+  } catch (error) {
+    functionPointError.value = error.message
+  }
+}
+
+async function loadLatestUseCasePointResult() {
+  useCasePointError.value = ''
+  useCasePointMessage.value = ''
+  useCasePointResult.value = null
+  if (!selectedProjectId.value) {
+    return
+  }
+  try {
+    const result = await fetchLatestUseCasePointResult(selectedProjectId.value)
+    useCasePointResult.value = result.data
+  } catch (error) {
+    useCasePointError.value = error.message
+  }
+}
+
+async function loadLatestModelResult() {
+  modelError.value = ''
+  modelMessage.value = ''
+  modelResult.value = null
+  if (!selectedProjectId.value) {
+    return
+  }
+  try {
+    const result = await fetchLatestModelResult(selectedProjectId.value)
+    modelResult.value = result.data
+  } catch (error) {
+    modelError.value = error.message
   }
 }
 
@@ -571,6 +798,203 @@ async function exportEstimationMarkdown() {
   }
 }
 
+async function runAiAnalysis() {
+  aiError.value = ''
+  aiMessage.value = ''
+  if (!selectedProjectId.value) {
+    aiError.value = '请先选择项目'
+    return
+  }
+  aiLoading.value = true
+  try {
+    const result = await analyzeProjectAi(selectedProjectId.value)
+    aiResult.value = result.data
+    aiMessage.value = '智能质量分析完成，结果已保存为 JSON 和 Markdown。'
+    activeMenu.value = 'ai'
+  } catch (error) {
+    aiError.value = error.message
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+function exportAiMarkdown() {
+  aiError.value = ''
+  if (!aiResult.value) {
+    aiError.value = '当前项目还没有智能分析结果'
+    return
+  }
+  downloadMarkdown(aiResult.value.markdown, 'ai-analysis.md')
+  aiMessage.value = '智能分析 Markdown 已下载。'
+}
+
+function clampScore(value) {
+  const score = Number(value)
+  if (Number.isNaN(score)) {
+    return 0
+  }
+  return Math.min(Math.max(score, 0), 5)
+}
+
+function scoreTotal(values) {
+  return values.reduce((total, value) => total + clampScore(value), 0)
+}
+
+function functionPointGscTotal() {
+  return scoreTotal(functionPointForm.value.generalSystemCharacteristics)
+}
+
+function useCaseTechnicalTotal() {
+  return scoreTotal(useCasePointForm.value.technicalFactors)
+}
+
+function useCaseEnvironmentalTotal() {
+  return scoreTotal(useCasePointForm.value.environmentalFactors)
+}
+
+async function runFunctionPointAnalysis() {
+  functionPointError.value = ''
+  functionPointMessage.value = ''
+  if (!selectedProjectId.value) {
+    functionPointError.value = '请先选择项目'
+    return
+  }
+  functionPointLoading.value = true
+  try {
+    functionPointForm.value.generalSystemCharacteristicTotal = functionPointGscTotal()
+    const result = await analyzeProjectFunctionPoint(selectedProjectId.value, functionPointForm.value)
+    functionPointResult.value = result.data
+    functionPointMessage.value = '功能点度量完成，结果已保存到本地任务文件。'
+    activeMenu.value = 'function-point'
+  } catch (error) {
+    functionPointError.value = error.message
+  } finally {
+    functionPointLoading.value = false
+  }
+}
+
+async function exportFunctionPointMarkdown() {
+  functionPointError.value = ''
+  functionPointReportMessage.value = ''
+  if (!selectedProjectId.value) {
+    functionPointError.value = '请先选择项目'
+    return
+  }
+  try {
+    const result = await exportFunctionPointReport(selectedProjectId.value)
+    downloadMarkdown(result.data.content, 'function-point-report.md')
+    functionPointReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
+  } catch (error) {
+    functionPointError.value = error.message
+  }
+}
+
+async function runUseCasePointAnalysis() {
+  useCasePointError.value = ''
+  useCasePointMessage.value = ''
+  if (!selectedProjectId.value) {
+    useCasePointError.value = '请先选择项目'
+    return
+  }
+  useCasePointLoading.value = true
+  try {
+    useCasePointForm.value.technicalFactorTotal = useCaseTechnicalTotal()
+    useCasePointForm.value.environmentalFactorTotal = useCaseEnvironmentalTotal()
+    const result = await analyzeProjectUseCasePoint(selectedProjectId.value, useCasePointForm.value)
+    useCasePointResult.value = result.data
+    useCasePointMessage.value = '用例点估算完成，结果已保存到本地任务文件。'
+    activeMenu.value = 'use-case'
+  } catch (error) {
+    useCasePointError.value = error.message
+  } finally {
+    useCasePointLoading.value = false
+  }
+}
+
+async function exportUseCasePointMarkdown() {
+  useCasePointError.value = ''
+  useCasePointReportMessage.value = ''
+  if (!selectedProjectId.value) {
+    useCasePointError.value = '请先选择项目'
+    return
+  }
+  try {
+    const result = await exportUseCasePointReport(selectedProjectId.value)
+    downloadMarkdown(result.data.content, 'use-case-point-report.md')
+    useCasePointReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
+  } catch (error) {
+    useCasePointError.value = error.message
+  }
+}
+
+async function runModelAnalysis() {
+  modelError.value = ''
+  modelMessage.value = ''
+  if (!selectedProjectId.value) {
+    modelError.value = '请先选择项目'
+    return
+  }
+  modelLoading.value = true
+  try {
+    const result = await analyzeProjectModel(selectedProjectId.value)
+    modelResult.value = result.data
+    modelMessage.value = '模型文件度量完成，结果已保存到本地任务文件。'
+    activeMenu.value = 'model-analysis'
+  } catch (error) {
+    modelError.value = error.message
+  } finally {
+    modelLoading.value = false
+  }
+}
+
+async function exportModelMarkdown() {
+  modelError.value = ''
+  modelReportMessage.value = ''
+  if (!selectedProjectId.value) {
+    modelError.value = '请先选择项目'
+    return
+  }
+  try {
+    const result = await exportModelReport(selectedProjectId.value)
+    downloadMarkdown(result.data.content, 'model-analysis-report.md')
+    modelReportMessage.value = `Markdown 报告已生成：${result.data.reportPath}`
+  } catch (error) {
+    modelError.value = error.message
+  }
+}
+
+async function exportXml() {
+  xmlExportError.value = ''
+  xmlExportMessage.value = ''
+  if (!selectedProjectId.value) {
+    xmlExportError.value = '请先选择项目'
+    return
+  }
+  try {
+    const result = await exportProjectXml(selectedProjectId.value)
+    downloadText(result.data.content, 'metrics.xml', 'application/xml;charset=utf-8')
+    xmlExportMessage.value = `XML 已生成：${result.data.reportPath}`
+  } catch (error) {
+    xmlExportError.value = error.message
+  }
+}
+
+async function exportComprehensiveMarkdown() {
+  comprehensiveReportError.value = ''
+  comprehensiveReportMessage.value = ''
+  if (!selectedProjectId.value) {
+    comprehensiveReportError.value = '请先选择项目'
+    return
+  }
+  try {
+    const result = await exportComprehensiveReport(selectedProjectId.value)
+    downloadMarkdown(result.data.content, 'final-metric-report.md')
+    comprehensiveReportMessage.value = `综合报告已生成：${result.data.reportPath}`
+  } catch (error) {
+    comprehensiveReportError.value = error.message
+  }
+}
+
 function formatDate(value) {
   if (!value) {
     return '-'
@@ -599,7 +1023,11 @@ async function copyProjectId(projectId) {
 }
 
 function downloadMarkdown(content, fileName) {
-  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+  downloadText(content, fileName, 'text/markdown;charset=utf-8')
+}
+
+function downloadText(content, fileName, type) {
+  const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -747,6 +1175,26 @@ function metricCardValue(type) {
       ? estimationResult.value.effortPersonMonths
       : estimationResult.value?.estimatedCost || 0
   }
+  if (activeMenu.value === 'function-point') {
+    return type === 'main' && functionPointResult.value
+      ? functionPointResult.value.adjustedFunctionPoints
+      : functionPointResult.value?.unadjustedFunctionPoints || 0
+  }
+  if (activeMenu.value === 'use-case') {
+    return type === 'main' && useCasePointResult.value
+      ? useCasePointResult.value.useCasePoints
+      : useCasePointResult.value?.estimatedPersonMonths || 0
+  }
+  if (activeMenu.value === 'model-analysis') {
+    return type === 'main' && modelResult.value
+      ? modelResult.value.summary.classCount + modelResult.value.summary.interfaceCount
+      : modelResult.value?.summary.highRiskClassCount || 0
+  }
+  if (activeMenu.value === 'ai') {
+    return type === 'main' && aiResult.value
+      ? aiResult.value.riskItems.length
+      : aiResult.value?.refactoringSuggestions.length || 0
+  }
   return 0
 }
 
@@ -762,6 +1210,18 @@ function metricLabel(type) {
   }
   if (activeMenu.value === 'estimation') {
     return type === 'main' ? '工作量' : '估算成本'
+  }
+  if (activeMenu.value === 'function-point') {
+    return type === 'main' ? '调整后功能点' : '未调整功能点'
+  }
+  if (activeMenu.value === 'use-case') {
+    return type === 'main' ? '用例点' : '估算人月'
+  }
+  if (activeMenu.value === 'model-analysis') {
+    return type === 'main' ? '模型类/接口' : '高风险类'
+  }
+  if (activeMenu.value === 'ai') {
+    return type === 'main' ? '风险项' : '改进建议'
   }
   return type === 'main' ? '文件数量' : '项目数量'
 }
@@ -779,6 +1239,18 @@ function metricNote(type) {
   if (activeMenu.value === 'estimation') {
     return type === 'main' ? '单位：人月' : '由人月成本换算'
   }
+  if (activeMenu.value === 'function-point') {
+    return type === 'main' ? 'AFP = UFP × VAF' : 'EI/EO/EQ/ILF/EIF 加权'
+  }
+  if (activeMenu.value === 'use-case') {
+    return type === 'main' ? 'UCP = UUCP × TCF × ECF' : '按 160 小时/人月换算'
+  }
+  if (activeMenu.value === 'model-analysis') {
+    return type === 'main' ? '来自 XML/XMI/OOM 模型文件' : '按规模和继承深度识别'
+  }
+  if (activeMenu.value === 'ai') {
+    return type === 'main' ? '由本地规则汇总' : '面向重构和测试'
+  }
   return type === 'main' ? '当前项目上传文件总数' : '本地 projects.json'
 }
 
@@ -790,6 +1262,43 @@ function riskLabel(level) {
     EXTREME: '极高风险'
   }
   return labels[level] || level || '-'
+}
+
+function radarSeries() {
+  if (!ooResult.value?.classes?.length) {
+    return []
+  }
+  return ooResult.value.classes
+    .slice()
+    .sort((left, right) => (right.cbo + right.wmc + right.lcom) - (left.cbo + left.wmc + left.lcom))
+    .slice(0, 4)
+    .map((item, index) => ({
+      name: item.className,
+      color: radarColors[index % radarColors.length],
+      points: radarPoints([
+        normalizeRadar(item.cbo, 20),
+        normalizeRadar(item.noo, 30),
+        normalizeRadar(item.noc, 10),
+        normalizeRadar(item.noa, 30),
+        normalizeRadar(item.dit, 6),
+        normalizeRadar(item.cs, 220)
+      ])
+    }))
+}
+
+function normalizeRadar(value, max) {
+  return Math.min(Math.max(Number(value) || 0, 0), max) / max
+}
+
+function radarPoints(values) {
+  const center = 120
+  const radius = 86
+  return values.map((value, index) => {
+    const angle = -Math.PI / 2 + index * (Math.PI * 2 / values.length)
+    const x = center + Math.cos(angle) * radius * value
+    const y = center + Math.sin(angle) * radius * value
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
 }
 
 function activeTitle() {
@@ -804,6 +1313,18 @@ function activeTitle() {
   }
   if (activeMenu.value === 'estimation') {
     return '估算分析'
+  }
+  if (activeMenu.value === 'function-point') {
+    return '功能点度量'
+  }
+  if (activeMenu.value === 'use-case') {
+    return '用例图度量'
+  }
+  if (activeMenu.value === 'model-analysis') {
+    return '模型文件度量'
+  }
+  if (activeMenu.value === 'ai') {
+    return '智能分析'
   }
   return '面向对象度量'
 }
@@ -821,11 +1342,23 @@ function activeEyebrow() {
   if (activeMenu.value === 'estimation') {
     return 'Effort and Cost Estimation'
   }
+  if (activeMenu.value === 'function-point') {
+    return 'Function Point Metrics'
+  }
+  if (activeMenu.value === 'use-case') {
+    return 'Use Case Point Estimation'
+  }
+  if (activeMenu.value === 'model-analysis') {
+    return 'UML / XMI Model Metrics'
+  }
+  if (activeMenu.value === 'ai') {
+    return 'Quality Recommendation'
+  }
   return 'Object-Oriented Metrics'
 }
 
 onMounted(async () => {
-  await Promise.all([loadHealth(), loadProjects()])
+  await Promise.all([loadHealth(), loadProjects(), loadThresholdConfig()])
 })
 </script>
 
@@ -852,7 +1385,7 @@ onMounted(async () => {
             :class="{ active: activeMenu === item.key, disabled: !item.implemented }"
             type="button"
             :disabled="!item.implemented"
-            :title="item.implemented ? item.label : '该功能尚未实现'"
+            :title="item.implemented ? item.label : '该功能暂不可用'"
             @click="handleMenuClick(item)"
           >
             <span class="menu-icon">{{ item.icon }}</span>
@@ -869,7 +1402,7 @@ onMounted(async () => {
             <h1>{{ activeTitle() }}</h1>
           </div>
           <div class="header-actions">
-            <button type="button" class="ghost-button disabled-button" disabled title="示例导入尚未实现">
+            <button type="button" class="ghost-button" @click="importSampleProject">
               导入示例
             </button>
             <button
@@ -901,7 +1434,8 @@ onMounted(async () => {
               <span>项目描述</span>
               <input v-model="projectForm.description" type="text" placeholder="用于记录项目背景，可选" />
             </label>
-            <button type="submit" class="primary-button">保存项目</button>
+            <button type="submit" class="primary-button">{{ editingProjectId ? '更新项目' : '保存项目' }}</button>
+            <button v-if="editingProjectId" type="button" class="ghost-button" @click="cancelEditProject">取消编辑</button>
           </form>
           <p v-if="projectMessage" class="form-message success">{{ projectMessage }}</p>
           <p v-if="projectError" class="form-message error">{{ projectError }}</p>
@@ -931,6 +1465,7 @@ onMounted(async () => {
                   <span>{{ project.language }}</span>
                   <span>{{ formatDate(project.createdAt) }}</span>
                   <div class="item-actions">
+                    <button type="button" class="mini-button" @click.stop="startEditProject(project)">编辑</button>
                     <button type="button" class="mini-button" @click.stop="copyProjectId(project.id)">复制 ID</button>
                     <button type="button" class="mini-button danger" @click.stop="removeProject(project)">删除</button>
                   </div>
@@ -967,6 +1502,7 @@ onMounted(async () => {
                 </div>
                 <div class="detail-actions">
                   <button type="button" class="mini-button" @click="selectProject(project.id)">设为当前</button>
+                  <button type="button" class="mini-button" @click="startEditProject(project)">编辑项目</button>
                   <button type="button" class="mini-button" @click="copyProjectId(project.id)">复制 ID</button>
                   <button type="button" class="mini-button danger" @click="removeProject(project)">删除项目</button>
                 </div>
@@ -982,8 +1518,23 @@ onMounted(async () => {
                   <strong>{{ projectFiles(project.id).length }}</strong>
                 </article>
                 <article>
-                  <span>创建时间</span>
-                  <strong>{{ formatDate(project.createdAt) }}</strong>
+                  <span>任务数</span>
+                  <strong>{{ projectTasks(project.id).length }}</strong>
+                </article>
+              </div>
+
+              <div class="task-history-list">
+                <div class="task-history-header">
+                  <strong>历史度量任务</strong>
+                  <span>最近 {{ projectTasks(project.id).length }} 条</span>
+                </div>
+                <div v-if="projectTasks(project.id).length === 0" class="empty-state compact">暂无历史任务</div>
+                <article v-for="task in projectTasks(project.id).slice(0, 5)" :key="task.taskId" class="task-history-item">
+                  <div>
+                    <strong>{{ task.type }}</strong>
+                    <small>{{ task.taskId }}</small>
+                  </div>
+                  <span>{{ task.status }} · {{ formatDate(task.createdAt) }}</span>
                 </article>
               </div>
 
@@ -1077,6 +1628,27 @@ onMounted(async () => {
               </div>
             </article>
           </div>
+        </section>
+
+        <section class="project-section threshold-section">
+          <div class="manager-header">
+            <div>
+              <p class="eyebrow">Risk Thresholds</p>
+              <h2>指标阈值配置</h2>
+            </div>
+            <button type="button" class="secondary-button" @click="loadThresholdConfig">重新读取</button>
+          </div>
+          <p v-if="thresholdMessage" class="form-message success">{{ thresholdMessage }}</p>
+          <p v-if="thresholdError" class="form-message error">{{ thresholdError }}</p>
+          <div class="threshold-grid">
+            <article v-for="(value, metric) in thresholdConfig" :key="metric">
+              <h3>{{ metric }}</h3>
+              <label><span>低风险上限</span><input v-model.number="value.low" type="number" min="0" step="0.01" /></label>
+              <label><span>中风险上限</span><input v-model.number="value.medium" type="number" min="0" step="0.01" /></label>
+              <label><span>高风险上限</span><input v-model.number="value.high" type="number" min="0" step="0.01" /></label>
+            </article>
+          </div>
+          <button type="button" class="primary-button" @click="submitThresholdConfig">保存阈值配置</button>
         </section>
         </template>
 
@@ -1286,6 +1858,318 @@ onMounted(async () => {
               </div>
             </template>
 
+            <template v-else-if="activeMenu === 'function-point'">
+              <div class="loc-header">
+                <div>
+                  <p class="eyebrow">IFPUG Function Point</p>
+                  <h2>功能点度量结果</h2>
+                </div>
+                <button type="button" class="primary-button" :disabled="functionPointLoading" @click="runFunctionPointAnalysis">
+                  {{ functionPointLoading ? '计算中...' : '计算功能点' }}
+                </button>
+                <button
+                  type="button"
+                  class="secondary-button"
+                  :disabled="!functionPointResult"
+                  @click="exportFunctionPointMarkdown"
+                >
+                  导出 Markdown
+                </button>
+              </div>
+              <div class="function-point-form">
+                <article>
+                  <h3>外部输入 EI</h3>
+                  <input v-model.number="functionPointForm.externalInputs.low" type="number" min="0" placeholder="低" />
+                  <input v-model.number="functionPointForm.externalInputs.average" type="number" min="0" placeholder="中" />
+                  <input v-model.number="functionPointForm.externalInputs.high" type="number" min="0" placeholder="高" />
+                </article>
+                <article>
+                  <h3>外部输出 EO</h3>
+                  <input v-model.number="functionPointForm.externalOutputs.low" type="number" min="0" placeholder="低" />
+                  <input v-model.number="functionPointForm.externalOutputs.average" type="number" min="0" placeholder="中" />
+                  <input v-model.number="functionPointForm.externalOutputs.high" type="number" min="0" placeholder="高" />
+                </article>
+                <article>
+                  <h3>外部查询 EQ</h3>
+                  <input v-model.number="functionPointForm.externalInquiries.low" type="number" min="0" placeholder="低" />
+                  <input v-model.number="functionPointForm.externalInquiries.average" type="number" min="0" placeholder="中" />
+                  <input v-model.number="functionPointForm.externalInquiries.high" type="number" min="0" placeholder="高" />
+                </article>
+                <article>
+                  <h3>内部逻辑文件 ILF</h3>
+                  <input v-model.number="functionPointForm.internalLogicalFiles.low" type="number" min="0" placeholder="低" />
+                  <input v-model.number="functionPointForm.internalLogicalFiles.average" type="number" min="0" placeholder="中" />
+                  <input v-model.number="functionPointForm.internalLogicalFiles.high" type="number" min="0" placeholder="高" />
+                </article>
+                <article>
+                  <h3>外部接口文件 EIF</h3>
+                  <input v-model.number="functionPointForm.externalInterfaceFiles.low" type="number" min="0" placeholder="低" />
+                  <input v-model.number="functionPointForm.externalInterfaceFiles.average" type="number" min="0" placeholder="中" />
+                  <input v-model.number="functionPointForm.externalInterfaceFiles.high" type="number" min="0" placeholder="高" />
+                </article>
+                <article>
+                  <h3>通用系统特征总分</h3>
+                  <input :value="functionPointGscTotal()" type="number" min="0" max="70" readonly />
+                  <button type="button" class="primary-button" :disabled="functionPointLoading" @click="runFunctionPointAnalysis">
+                    {{ functionPointLoading ? '计算中...' : '计算' }}
+                  </button>
+                </article>
+              </div>
+              <div class="factor-score-panel">
+                <div class="factor-score-header">
+                  <div>
+                    <h3>14 项通用系统特征 GSC</h3>
+                    <p>每项 0-5 分，系统按 IFPUG 公式自动汇总为 VAF 调整因子。</p>
+                  </div>
+                  <strong>总分 {{ functionPointGscTotal() }} / 70</strong>
+                </div>
+                <div class="factor-score-grid">
+                  <label v-for="(label, index) in gscLabels" :key="label">
+                    <span>{{ index + 1 }}. {{ label }}</span>
+                    <input v-model.number="functionPointForm.generalSystemCharacteristics[index]" type="number" min="0" max="5" />
+                  </label>
+                </div>
+              </div>
+              <p v-if="functionPointMessage" class="form-message success loc-message">{{ functionPointMessage }}</p>
+              <p v-if="functionPointReportMessage" class="form-message success loc-message">{{ functionPointReportMessage }}</p>
+              <p v-if="functionPointError" class="form-message error loc-message">{{ functionPointError }}</p>
+              <div v-if="!functionPointResult" class="empty-state loc-empty">
+                暂无功能点结果。录入 EI、EO、EQ、ILF、EIF 的低/中/高复杂度数量后即可计算。
+              </div>
+              <div v-else class="loc-result">
+                <div class="loc-summary-grid">
+                  <article>
+                    <span>UFP</span>
+                    <strong>{{ functionPointResult.unadjustedFunctionPoints }}</strong>
+                  </article>
+                  <article>
+                    <span>VAF</span>
+                    <strong>{{ functionPointResult.valueAdjustmentFactor }}</strong>
+                  </article>
+                  <article>
+                    <span>AFP</span>
+                    <strong>{{ functionPointResult.adjustedFunctionPoints }}</strong>
+                  </article>
+                  <article>
+                    <span>GSC 总分</span>
+                    <strong>{{ functionPointResult.generalSystemCharacteristicTotal }}</strong>
+                  </article>
+                </div>
+                <div class="estimation-result-grid">
+                  <article>
+                    <span>外部输入 EI</span>
+                    <strong>{{ functionPointResult.externalInputs }}</strong>
+                  </article>
+                  <article>
+                    <span>外部输出 EO</span>
+                    <strong>{{ functionPointResult.externalOutputs }}</strong>
+                  </article>
+                  <article>
+                    <span>外部查询 EQ</span>
+                    <strong>{{ functionPointResult.externalInquiries }}</strong>
+                  </article>
+                  <article>
+                    <span>逻辑文件</span>
+                    <strong>{{ functionPointResult.internalLogicalFiles + functionPointResult.externalInterfaceFiles }}</strong>
+                  </article>
+                </div>
+              </div>
+            </template>
+
+            <template v-else-if="activeMenu === 'use-case'">
+              <div class="loc-header">
+                <div>
+                  <p class="eyebrow">Use Case Point</p>
+                  <h2>用例点估算结果</h2>
+                </div>
+                <button type="button" class="primary-button" :disabled="useCasePointLoading" @click="runUseCasePointAnalysis">
+                  {{ useCasePointLoading ? '估算中...' : '计算用例点' }}
+                </button>
+                <button
+                  type="button"
+                  class="secondary-button"
+                  :disabled="!useCasePointResult"
+                  @click="exportUseCasePointMarkdown"
+                >
+                  导出 Markdown
+                </button>
+              </div>
+              <div class="use-case-form">
+                <article>
+                  <h3>参与者复杂度</h3>
+                  <label><span>简单</span><input v-model.number="useCasePointForm.simpleActors" type="number" min="0" /></label>
+                  <label><span>一般</span><input v-model.number="useCasePointForm.averageActors" type="number" min="0" /></label>
+                  <label><span>复杂</span><input v-model.number="useCasePointForm.complexActors" type="number" min="0" /></label>
+                </article>
+                <article>
+                  <h3>用例复杂度</h3>
+                  <label><span>简单</span><input v-model.number="useCasePointForm.simpleUseCases" type="number" min="0" /></label>
+                  <label><span>一般</span><input v-model.number="useCasePointForm.averageUseCases" type="number" min="0" /></label>
+                  <label><span>复杂</span><input v-model.number="useCasePointForm.complexUseCases" type="number" min="0" /></label>
+                </article>
+                <article>
+                  <h3>调整参数</h3>
+                  <label><span>技术因子总分</span><input :value="useCaseTechnicalTotal()" type="number" min="0" max="65" readonly /></label>
+                  <label><span>环境因子总分</span><input :value="useCaseEnvironmentalTotal()" type="number" min="0" max="40" readonly /></label>
+                  <label><span>小时/用例点</span><input v-model.number="useCasePointForm.productivityHoursPerUseCasePoint" type="number" min="1" /></label>
+                </article>
+              </div>
+              <div class="factor-score-panel">
+                <div class="factor-score-header">
+                  <div>
+                    <h3>13 项技术复杂度因子 TCF</h3>
+                    <p>每项 0-5 分，系统自动按 TCF = 0.6 + 0.01 × 技术因子总分计算。</p>
+                  </div>
+                  <strong>总分 {{ useCaseTechnicalTotal() }} / 65</strong>
+                </div>
+                <div class="factor-score-grid">
+                  <label v-for="(label, index) in technicalFactorLabels" :key="label">
+                    <span>{{ index + 1 }}. {{ label }}</span>
+                    <input v-model.number="useCasePointForm.technicalFactors[index]" type="number" min="0" max="5" />
+                  </label>
+                </div>
+              </div>
+              <div class="factor-score-panel compact">
+                <div class="factor-score-header">
+                  <div>
+                    <h3>8 项环境复杂度因子 ECF</h3>
+                    <p>每项 0-5 分，系统自动按 ECF = 1.4 - 0.03 × 环境因子总分计算。</p>
+                  </div>
+                  <strong>总分 {{ useCaseEnvironmentalTotal() }} / 40</strong>
+                </div>
+                <div class="factor-score-grid">
+                  <label v-for="(label, index) in environmentalFactorLabels" :key="label">
+                    <span>{{ index + 1 }}. {{ label }}</span>
+                    <input v-model.number="useCasePointForm.environmentalFactors[index]" type="number" min="0" max="5" />
+                  </label>
+                </div>
+              </div>
+              <p v-if="useCasePointMessage" class="form-message success loc-message">{{ useCasePointMessage }}</p>
+              <p v-if="useCasePointReportMessage" class="form-message success loc-message">{{ useCasePointReportMessage }}</p>
+              <p v-if="useCasePointError" class="form-message error loc-message">{{ useCasePointError }}</p>
+              <div v-if="!useCasePointResult" class="empty-state loc-empty">
+                暂无用例点结果。录入参与者、用例和调整因子后即可估算用例点与工作量。
+              </div>
+              <div v-else class="loc-result">
+                <div class="loc-summary-grid">
+                  <article>
+                    <span>UCP</span>
+                    <strong>{{ useCasePointResult.useCasePoints }}</strong>
+                  </article>
+                  <article>
+                    <span>估算工时</span>
+                    <strong>{{ useCasePointResult.estimatedHours }}</strong>
+                  </article>
+                  <article>
+                    <span>估算人月</span>
+                    <strong>{{ useCasePointResult.estimatedPersonMonths }}</strong>
+                  </article>
+                  <article>
+                    <span>UUCP</span>
+                    <strong>{{ useCasePointResult.unadjustedUseCasePoints }}</strong>
+                  </article>
+                </div>
+                <div class="estimation-result-grid">
+                  <article>
+                    <span>UAW</span>
+                    <strong>{{ useCasePointResult.actorWeight }}</strong>
+                  </article>
+                  <article>
+                    <span>UUCW</span>
+                    <strong>{{ useCasePointResult.useCaseWeight }}</strong>
+                  </article>
+                  <article>
+                    <span>TCF</span>
+                    <strong>{{ useCasePointResult.technicalComplexityFactor }}</strong>
+                  </article>
+                  <article>
+                    <span>ECF</span>
+                    <strong>{{ useCasePointResult.environmentalComplexityFactor }}</strong>
+                  </article>
+                </div>
+              </div>
+            </template>
+
+            <template v-else-if="activeMenu === 'model-analysis'">
+              <div class="loc-header">
+                <div>
+                  <p class="eyebrow">UML / XMI / OOM</p>
+                  <h2>模型文件度量结果</h2>
+                </div>
+                <button type="button" class="primary-button" :disabled="modelLoading" @click="runModelAnalysis">
+                  {{ modelLoading ? '分析中...' : '开始模型分析' }}
+                </button>
+                <button
+                  type="button"
+                  class="secondary-button"
+                  :disabled="!modelResult"
+                  @click="exportModelMarkdown"
+                >
+                  导出 Markdown
+                </button>
+              </div>
+              <p v-if="modelMessage" class="form-message success loc-message">{{ modelMessage }}</p>
+              <p v-if="modelReportMessage" class="form-message success loc-message">{{ modelReportMessage }}</p>
+              <p v-if="modelError" class="form-message error loc-message">{{ modelError }}</p>
+              <div v-if="!modelResult" class="empty-state loc-empty">
+                暂无模型度量结果。请上传 `.xml`、`.xmi` 或 `.oom` 模型文件，然后点击“开始模型分析”。
+              </div>
+              <div v-else class="loc-result">
+                <div class="loc-summary-grid">
+                  <article>
+                    <span>模型文件数</span>
+                    <strong>{{ modelResult.summary.fileCount }}</strong>
+                  </article>
+                  <article>
+                    <span>类/接口数</span>
+                    <strong>{{ modelResult.summary.classCount + modelResult.summary.interfaceCount }}</strong>
+                  </article>
+                  <article>
+                    <span>属性/操作</span>
+                    <strong>{{ modelResult.summary.attributeCount + modelResult.summary.operationCount }}</strong>
+                  </article>
+                  <article>
+                    <span>高风险类</span>
+                    <strong>{{ modelResult.summary.highRiskClassCount }}</strong>
+                  </article>
+                </div>
+                <div class="loc-table-wrap">
+                  <table class="loc-table oo-table">
+                    <thead>
+                      <tr>
+                        <th>类/接口</th>
+                        <th>类型</th>
+                        <th>来源</th>
+                        <th>属性</th>
+                        <th>操作</th>
+                        <th>子类</th>
+                        <th>继承深度</th>
+                        <th>父类</th>
+                        <th>风险</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in modelResult.classes" :key="`${item.sourceUploadName}-${item.className}`">
+                        <td>{{ item.className }}</td>
+                        <td>{{ item.type }}</td>
+                        <td>{{ item.sourceUploadName }}</td>
+                        <td>{{ item.attributeCount }}</td>
+                        <td>{{ item.operationCount }}</td>
+                        <td>{{ item.childCount }}</td>
+                        <td>{{ item.inheritanceDepth }}</td>
+                        <td>{{ item.parentName || '-' }}</td>
+                        <td>
+                          <span class="risk-badge" :class="item.riskLevel.toLowerCase()">
+                            {{ riskLabel(item.riskLevel) }}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </template>
+
             <template v-else-if="activeMenu === 'object-oriented'">
               <div class="loc-header">
                 <div>
@@ -1333,6 +2217,34 @@ onMounted(async () => {
                   <span>CK：CBO、DIT、NOC、WMC、LCOM</span>
                   <span>LK：NOA、NOO、CS</span>
                 </div>
+                <div class="radar-wrap">
+                  <div class="radar-grid">
+                    <span v-for="axis in radarAxes" :key="axis" class="axis-label">{{ axis }}</span>
+                    <svg viewBox="0 0 240 240" role="img" aria-label="CK LK 雷达图">
+                      <polygon class="grid-line" points="120,34 194.5,77 194.5,163 120,206 45.5,163 45.5,77" />
+                      <polygon class="grid-line" points="120,62 170.2,91 170.2,149 120,178 69.8,149 69.8,91" />
+                      <polygon class="grid-line" points="120,90 146,105 146,135 120,150 94,135 94,105" />
+                      <line class="axis-line" x1="120" y1="120" x2="120" y2="34" />
+                      <line class="axis-line" x1="120" y1="120" x2="194.5" y2="77" />
+                      <line class="axis-line" x1="120" y1="120" x2="194.5" y2="163" />
+                      <line class="axis-line" x1="120" y1="120" x2="120" y2="206" />
+                      <line class="axis-line" x1="120" y1="120" x2="45.5" y2="163" />
+                      <line class="axis-line" x1="120" y1="120" x2="45.5" y2="77" />
+                      <polygon
+                        v-for="series in radarSeries()"
+                        :key="series.name"
+                        class="data-line"
+                        :class="series.color"
+                        :points="series.points"
+                      />
+                    </svg>
+                  </div>
+                  <div class="legend">
+                    <span v-for="series in radarSeries()" :key="series.name">
+                      <i :class="series.color"></i>{{ series.name }}
+                    </span>
+                  </div>
+                </div>
                 <div class="loc-table-wrap">
                   <table class="loc-table oo-table">
                     <thead>
@@ -1372,6 +2284,58 @@ onMounted(async () => {
                       </tr>
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </template>
+
+            <template v-else-if="activeMenu === 'ai'">
+              <div class="loc-header">
+                <div>
+                  <p class="eyebrow">LocalRuleAnalyzer</p>
+                  <h2>智能质量分析结果</h2>
+                </div>
+                <button type="button" class="primary-button" :disabled="aiLoading" @click="runAiAnalysis">
+                  {{ aiLoading ? '分析中...' : '生成智能建议' }}
+                </button>
+                <button
+                  type="button"
+                  class="secondary-button"
+                  :disabled="!aiResult"
+                  @click="exportAiMarkdown"
+                >
+                  导出 Markdown
+                </button>
+              </div>
+              <p v-if="aiMessage" class="form-message success loc-message">{{ aiMessage }}</p>
+              <p v-if="aiError" class="form-message error loc-message">{{ aiError }}</p>
+              <div v-if="!aiResult" class="empty-state loc-empty">
+                暂无智能分析结果。点击“生成智能建议”后，系统会基于 LoC、圈复杂度、CK/LK 和估算结果生成质量评价。
+              </div>
+              <div v-else class="ai-result">
+                <article class="analysis-card">
+                  <span>总体评价</span>
+                  <p>{{ aiResult.overallAssessment }}</p>
+                  <small>分析器：{{ aiResult.modelName }} · {{ formatDate(aiResult.analyzedAt) }}</small>
+                </article>
+                <div class="analysis-columns">
+                  <article>
+                    <h3>主要风险</h3>
+                    <ul>
+                      <li v-for="item in aiResult.riskItems" :key="item">{{ item }}</li>
+                    </ul>
+                  </article>
+                  <article>
+                    <h3>重构建议</h3>
+                    <ul>
+                      <li v-for="item in aiResult.refactoringSuggestions" :key="item">{{ item }}</li>
+                    </ul>
+                  </article>
+                  <article>
+                    <h3>测试建议</h3>
+                    <ul>
+                      <li v-for="item in aiResult.testSuggestions" :key="item">{{ item }}</li>
+                    </ul>
+                  </article>
                 </div>
               </div>
             </template>
@@ -1569,8 +2533,11 @@ onMounted(async () => {
               </template>
             </div>
             <div class="button-row">
-              <button type="button" class="secondary-button disabled-button" disabled title="XML 导出尚未实现">
+              <button type="button" class="secondary-button" @click="exportXml">
                 导出 XML 格式
+              </button>
+              <button type="button" class="secondary-button" @click="exportComprehensiveMarkdown">
+                导出综合报告
               </button>
               <button
                 v-if="activeMenu === 'loc'"
@@ -1600,6 +2567,33 @@ onMounted(async () => {
                 {{ ooLoading ? '分析中...' : '开始 CK/LK 分析' }}
               </button>
               <button
+                v-else-if="activeMenu === 'model-analysis'"
+                type="button"
+                class="primary-button"
+                :disabled="modelLoading"
+                @click="runModelAnalysis"
+              >
+                {{ modelLoading ? '分析中...' : '模型文件度量' }}
+              </button>
+              <button
+                v-else-if="activeMenu === 'function-point'"
+                type="button"
+                class="primary-button"
+                :disabled="functionPointLoading"
+                @click="runFunctionPointAnalysis"
+              >
+                {{ functionPointLoading ? '计算中...' : '功能点度量' }}
+              </button>
+              <button
+                v-else-if="activeMenu === 'use-case'"
+                type="button"
+                class="primary-button"
+                :disabled="useCasePointLoading"
+                @click="runUseCasePointAnalysis"
+              >
+                {{ useCasePointLoading ? '估算中...' : '用例点估算' }}
+              </button>
+              <button
                 v-else-if="activeMenu === 'estimation'"
                 type="button"
                 class="primary-button"
@@ -1608,14 +2602,27 @@ onMounted(async () => {
               >
                 {{ estimationLoading ? '估算中...' : '开始估算' }}
               </button>
-              <button v-else type="button" class="primary-button disabled-button" disabled title="该分析尚未实现">
+              <button
+                v-else-if="activeMenu === 'ai'"
+                type="button"
+                class="primary-button"
+                :disabled="aiLoading"
+                @click="runAiAnalysis"
+              >
+                {{ aiLoading ? '分析中...' : 'AI 智能分析' }}
+              </button>
+              <button v-else type="button" class="primary-button disabled-button" disabled title="请选择一个分析模块">
                 开始分析
               </button>
             </div>
-            <button type="button" class="ai-button disabled-button" disabled title="AI 智能分析尚未实现">
-              AI 智能分析
+            <p v-if="xmlExportMessage" class="form-message success">{{ xmlExportMessage }}</p>
+            <p v-if="xmlExportError" class="form-message error">{{ xmlExportError }}</p>
+            <p v-if="comprehensiveReportMessage" class="form-message success">{{ comprehensiveReportMessage }}</p>
+            <p v-if="comprehensiveReportError" class="form-message error">{{ comprehensiveReportError }}</p>
+            <button type="button" class="ai-button" :disabled="aiLoading" @click="runAiAnalysis">
+              {{ aiLoading ? '智能分析中...' : 'AI 智能分析' }}
             </button>
-            <p class="todo-hint">深色按钮表示功能已规划但尚未完成。</p>
+            <p class="todo-hint">智能分析默认使用本地规则生成建议，可在后续扩展为外部大模型接口。</p>
           </aside>
         </div>
         </template>

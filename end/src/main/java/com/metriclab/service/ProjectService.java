@@ -3,10 +3,14 @@ package com.metriclab.service;
 import com.metriclab.model.dto.CreateProjectRequest;
 import com.metriclab.model.dto.ProjectIndex;
 import com.metriclab.model.dto.ProjectInfo;
+import com.metriclab.model.dto.TaskHistoryItem;
+import com.metriclab.model.dto.UpdateProjectRequest;
 import com.metriclab.storage.FileStorageService;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -63,6 +67,64 @@ public class ProjectService {
         fileStorageService.deleteProjectDirectory(projectId);
     }
 
+    public synchronized ProjectInfo updateProject(String projectId, UpdateProjectRequest request) throws IOException {
+        if (request == null) {
+            throw new IllegalArgumentException("项目参数不能为空");
+        }
+        ProjectIndex index = readIndex();
+        List<ProjectInfo> projects = new ArrayList<>(index.projects());
+        ProjectInfo current = projects.stream()
+                .filter(project -> project.id().equals(projectId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("项目不存在：" + projectId));
+        ProjectInfo updated = new ProjectInfo(
+                current.id(),
+                normalizeRequired(request.name(), "项目名称不能为空"),
+                normalizeOptional(request.language(), current.language()),
+                normalizeOptional(request.description(), ""),
+                current.createdAt(),
+                OffsetDateTime.now()
+        );
+        List<ProjectInfo> next = projects.stream()
+                .map(project -> project.id().equals(projectId) ? updated : project)
+                .toList();
+        fileStorageService.writeJson(fileStorageService.projectsIndexPath(), new ProjectIndex(next));
+        fileStorageService.writeJson(fileStorageService.projectDirectory(projectId).resolve("project.json"), updated);
+        return updated;
+    }
+
+    public List<TaskHistoryItem> listTaskHistory(String projectId) throws IOException {
+        boolean exists = readIndex().projects().stream().anyMatch(project -> project.id().equals(projectId));
+        if (!exists) {
+            throw new IllegalArgumentException("项目不存在：" + projectId);
+        }
+        Path tasksDirectory = fileStorageService.tasksDirectory(projectId);
+        if (Files.notExists(tasksDirectory)) {
+            return List.of();
+        }
+        try (var stream = Files.list(tasksDirectory)) {
+            return stream
+                    .filter(Files::isDirectory)
+                    .map(path -> readTask(projectId, path))
+                    .filter(item -> item != null)
+                    .sorted(Comparator.comparing(TaskHistoryItem::createdAt).reversed())
+                    .toList();
+        }
+    }
+
+    private TaskHistoryItem readTask(String projectId, Path taskDirectory) {
+        Path taskPath = taskDirectory.resolve("task.json");
+        if (Files.notExists(taskPath)) {
+            return null;
+        }
+        try {
+            TaskFile task = fileStorageService.readJson(taskPath, TaskFile.class);
+            return new TaskHistoryItem(task.taskId(), projectId, task.type(), task.status(), task.createdAt(), taskDirectory.toString());
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
     private ProjectIndex readIndex() throws IOException {
         ProjectIndex index = fileStorageService.readJson(fileStorageService.projectsIndexPath(), ProjectIndex.class);
         if (index.projects() == null) {
@@ -88,5 +150,8 @@ public class ProjectService {
     private String normalizeOptional(String value, String defaultValue) {
         String normalized = value == null ? "" : value.trim();
         return normalized.isEmpty() ? defaultValue : normalized;
+    }
+
+    private record TaskFile(String taskId, String projectId, String type, String status, OffsetDateTime createdAt) {
     }
 }

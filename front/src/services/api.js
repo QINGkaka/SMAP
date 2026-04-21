@@ -36,9 +36,31 @@ export async function createProject(payload) {
   })
 }
 
+export async function updateProject(projectId, payload) {
+  return request(`/projects/${projectId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  })
+}
+
 export async function deleteProject(projectId) {
   return request(`/projects/${projectId}`, {
     method: 'DELETE'
+  })
+}
+
+export async function fetchProjectTasks(projectId) {
+  return request(`/projects/${projectId}/tasks`)
+}
+
+export async function fetchThresholds() {
+  return request('/config/thresholds')
+}
+
+export async function saveThresholds(payload) {
+  return request('/config/thresholds', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
   })
 }
 
@@ -116,4 +138,66 @@ export async function fetchLatestEstimationResult(projectId) {
 
 export async function exportEstimationReport(projectId) {
   return request(`/projects/${projectId}/estimation/report`)
+}
+
+export async function exportProjectXml(projectId) {
+  return request(`/projects/${projectId}/export/xml`)
+}
+
+export async function analyzeProjectAi(projectId) {
+  return request(`/projects/${projectId}/ai-analysis/analyze`, {
+    method: 'POST'
+  })
+}
+
+export async function fetchLatestAiResult(projectId) {
+  return request(`/projects/${projectId}/ai-analysis/latest`)
+}
+
+export async function exportComprehensiveReport(projectId) {
+  return request(`/projects/${projectId}/report/comprehensive`)
+}
+
+export async function analyzeProjectFunctionPoint(projectId, payload) {
+  return request(`/projects/${projectId}/function-point/analyze`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  })
+}
+
+export async function fetchLatestFunctionPointResult(projectId) {
+  return request(`/projects/${projectId}/function-point/latest`)
+}
+
+export async function exportFunctionPointReport(projectId) {
+  return request(`/projects/${projectId}/function-point/report`)
+}
+
+export async function analyzeProjectUseCasePoint(projectId, payload) {
+  return request(`/projects/${projectId}/use-case-point/analyze`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  })
+}
+
+export async function fetchLatestUseCasePointResult(projectId) {
+  return request(`/projects/${projectId}/use-case-point/latest`)
+}
+
+export async function exportUseCasePointReport(projectId) {
+  return request(`/projects/${projectId}/use-case-point/report`)
+}
+
+export async function analyzeProjectModel(projectId) {
+  return request(`/projects/${projectId}/model-analysis/analyze`, {
+    method: 'POST'
+  })
+}
+
+export async function fetchLatestModelResult(projectId) {
+  return request(`/projects/${projectId}/model-analysis/latest`)
+}
+
+export async function exportModelReport(projectId) {
+  return request(`/projects/${projectId}/model-analysis/report`)
 }

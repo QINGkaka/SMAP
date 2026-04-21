@@ -3,11 +3,14 @@ package com.metriclab.controller;
 import com.metriclab.common.ApiResponse;
 import com.metriclab.model.dto.CreateProjectRequest;
 import com.metriclab.model.dto.ProjectInfo;
+import com.metriclab.model.dto.TaskHistoryItem;
+import com.metriclab.model.dto.UpdateProjectRequest;
 import com.metriclab.service.ProjectService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,5 +42,15 @@ public class ProjectController {
     public ApiResponse<Void> deleteProject(@PathVariable String projectId) throws IOException {
         projectService.deleteProject(projectId);
         return ApiResponse.ok("项目删除成功", null);
+    }
+
+    @PutMapping("/{projectId}")
+    public ApiResponse<ProjectInfo> updateProject(@PathVariable String projectId, @RequestBody UpdateProjectRequest request) throws IOException {
+        return ApiResponse.ok("项目更新成功", projectService.updateProject(projectId, request));
+    }
+
+    @GetMapping("/{projectId}/tasks")
+    public ApiResponse<List<TaskHistoryItem>> listTaskHistory(@PathVariable String projectId) throws IOException {
+        return ApiResponse.ok(projectService.listTaskHistory(projectId));
     }
 }
