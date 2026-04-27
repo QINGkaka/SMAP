@@ -22,6 +22,9 @@ public class UseCasePointService {
     private static final double HOURS_PER_PERSON_MONTH = 160.0;
     private static final double[] TECHNICAL_WEIGHTS = {2, 1, 1, 1, 1, 0.5, 0.5, 2, 1, 1, 1, 1, 1};
     private static final double[] ENVIRONMENTAL_WEIGHTS = {1.5, 0.5, 1, 0.5, 1, 2, -1, -1};
+    private static final double MAX_TECHNICAL_FACTOR_TOTAL = 65.0;
+    private static final double MIN_ENVIRONMENTAL_FACTOR_TOTAL = -10.0;
+    private static final double MAX_ENVIRONMENTAL_FACTOR_TOTAL = 40.0;
 
     private final FileStorageService fileStorageService;
     private final UploadService uploadService;
@@ -116,7 +119,7 @@ public class UseCasePointService {
             }
             return total;
         }
-        return fallback == null ? defaultValue : fallback.doubleValue();
+        return validateFallbackTotal(fallback, weights, defaultValue);
     }
 
     private double normalizePositive(Double value, double defaultValue) {
@@ -128,6 +131,20 @@ public class UseCasePointService {
 
     private double round2(double value) {
         return Math.round(value * 100.0) / 100.0;
+    }
+
+    private double validateFallbackTotal(Number fallback, double[] weights, double defaultValue) {
+        double value = fallback == null ? defaultValue : fallback.doubleValue();
+        if (weights == TECHNICAL_WEIGHTS) {
+            if (value < 0 || value > MAX_TECHNICAL_FACTOR_TOTAL) {
+                throw new IllegalArgumentException("鎶€鏈洜瀛愬姞鏉冩€诲垎蹇呴』鍦?0 鍒?65 涔嬮棿");
+            }
+            return value;
+        }
+        if (value < MIN_ENVIRONMENTAL_FACTOR_TOTAL || value > MAX_ENVIRONMENTAL_FACTOR_TOTAL) {
+            throw new IllegalArgumentException("鐜鍥犲瓙鍔犳潈鎬诲垎蹇呴』鍦?10 鍒?40 涔嬮棿");
+        }
+        return value;
     }
 
     private String createTaskId(OffsetDateTime now) {

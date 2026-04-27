@@ -60,6 +60,7 @@ public class ObjectOrientedAnalysisService {
 
     public synchronized ObjectOrientedAnalysisResult analyzeProject(String projectId, AnalysisScopeRequest request) throws IOException {
         List<UploadedFileInfo> uploadedFiles = resolveTargetFiles(projectId, request);
+        List<String> analyzedFileIds = resolvedFileIds(uploadedFiles, request);
         List<RawClassMetric> rawMetrics = new ArrayList<>();
         for (UploadedFileInfo uploadedFile : uploadedFiles) {
             Path storedPath = fileStorageService.uploadsDirectory(projectId).resolve(uploadedFile.storedName());
@@ -110,7 +111,7 @@ public class ObjectOrientedAnalysisService {
         ObjectOrientedSummary summary = summarize(classMetrics);
         OffsetDateTime now = OffsetDateTime.now();
         String taskId = createTaskId(now);
-        ObjectOrientedAnalysisResult result = new ObjectOrientedAnalysisResult(taskId, projectId, summary, classMetrics, now);
+        ObjectOrientedAnalysisResult result = new ObjectOrientedAnalysisResult(taskId, projectId, summary, classMetrics, now, analyzedFileIds);
         Path taskDirectory = fileStorageService.taskDirectory(projectId, taskId);
         fileStorageService.writeJson(taskDirectory.resolve("task.json"), new TaskFile(taskId, projectId, "OBJECT_ORIENTED", "FINISHED", now));
         fileStorageService.writeJson(taskDirectory.resolve("object-oriented-result.json"), result);
@@ -185,6 +186,16 @@ public class ObjectOrientedAnalysisService {
             }
         }
         return metrics;
+    }
+
+    private List<String> resolvedFileIds(List<UploadedFileInfo> uploadedFiles, AnalysisScopeRequest request) {
+        List<String> fileIds = request == null ? List.of() : request.fileIds();
+        if (fileIds == null || fileIds.isEmpty()) {
+            return List.of();
+        }
+        return uploadedFiles.stream()
+                .map(UploadedFileInfo::id)
+                .toList();
     }
 
     private List<RawClassMetric> analyzeJavaSource(String fileName, String sourceUploadName, String source) {

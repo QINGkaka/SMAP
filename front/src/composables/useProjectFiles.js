@@ -23,6 +23,12 @@ export function useProjectFiles({
   const uploadMessage = ref('')
   const uploadError = ref('')
 
+  function invalidateCurrentProjectMetrics(projectId, message) {
+    if (projectId && projectId === selectedProjectId.value) {
+      markMetricResultsStale(message)
+    }
+  }
+
   async function loadAllProjectFiles(projectList = []) {
     if (!projectList || projectList.length === 0) {
       projectFileMap.value = {}
@@ -113,7 +119,7 @@ export function useProjectFiles({
       selectedFiles.value = []
       await loadProjectFiles()
       await loadFilesForProject(selectedProjectId.value)
-      markMetricResultsStale('文件已更新，可按需重新执行当前度量。')
+      invalidateCurrentProjectMetrics(selectedProjectId.value, '文件已更新，可按需重新执行当前度量。')
     } catch (error) {
       uploadError.value = error.message
     } finally {
@@ -144,7 +150,7 @@ export function useProjectFiles({
         [project.id]: []
       }
       await loadFilesForProject(project.id)
-      markMetricResultsStale('文件已更新，可按需重新执行当前度量。')
+      invalidateCurrentProjectMetrics(project.id, '文件已更新，可按需重新执行当前度量。')
     } catch (error) {
       managementError.value = error.message
     } finally {
@@ -167,7 +173,7 @@ export function useProjectFiles({
       uploadMessage.value = `已删除：${file.originalName}`
       await loadProjectFiles()
       await loadFilesForProject(selectedProjectId.value)
-      markMetricResultsStale('上传文件已变化，可按需重新执行当前度量。')
+      invalidateCurrentProjectMetrics(selectedProjectId.value, '上传文件已变化，可按需重新执行当前度量。')
     } catch (error) {
       uploadError.value = error.message
     }
@@ -184,7 +190,7 @@ export function useProjectFiles({
       await deleteProjectFile(project.id, file.id)
       managementMessage.value = `已从“${project.name}”删除：${file.originalName}`
       await loadFilesForProject(project.id)
-      markMetricResultsStale('上传文件已变化，可按需重新执行当前度量。')
+      invalidateCurrentProjectMetrics(project.id, '上传文件已变化，可按需重新执行当前度量。')
     } catch (error) {
       managementError.value = error.message
     }

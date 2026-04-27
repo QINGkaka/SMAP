@@ -349,12 +349,12 @@ public class AiAnalysisService {
 
     private ComplexityAnalysisResult ensureComplexity(String projectId) throws IOException {
         ComplexityAnalysisResult result = complexityAnalysisService.latestResult(projectId);
-        return result == null ? complexityAnalysisService.analyzeProject(projectId) : result;
+        return isFullProjectResult(result) ? result : complexityAnalysisService.analyzeProject(projectId);
     }
 
     private ObjectOrientedAnalysisResult ensureObjectOriented(String projectId) throws IOException {
         ObjectOrientedAnalysisResult result = objectOrientedAnalysisService.latestResult(projectId);
-        return result == null ? objectOrientedAnalysisService.analyzeProject(projectId) : result;
+        return isFullProjectResult(result) ? result : objectOrientedAnalysisService.analyzeProject(projectId);
     }
 
     private EstimationResult ensureEstimation(String projectId) throws IOException {
@@ -505,6 +505,14 @@ public class AiAnalysisService {
         String timestamp = now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         return "task-ai-" + timestamp + "-" + suffix;
+    }
+
+    private boolean isFullProjectResult(ComplexityAnalysisResult result) {
+        return result != null && (result.analyzedFileIds() == null || result.analyzedFileIds().isEmpty());
+    }
+
+    private boolean isFullProjectResult(ObjectOrientedAnalysisResult result) {
+        return result != null && (result.analyzedFileIds() == null || result.analyzedFileIds().isEmpty());
     }
 
     private record TaskFile(String taskId, String projectId, String type, String status, OffsetDateTime createdAt) {

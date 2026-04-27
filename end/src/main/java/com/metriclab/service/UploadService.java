@@ -64,6 +64,7 @@ public class UploadService {
         List<UploadedFileInfo> files = new ArrayList<>(index.files());
         files.add(info);
         fileStorageService.writeJson(fileStorageService.uploadsIndexPath(projectId), new UploadIndex(files));
+        fileStorageService.invalidateDerivedArtifacts(projectId);
         return info;
     }
 
@@ -97,6 +98,7 @@ public class UploadService {
                 .toList();
         fileStorageService.deleteUpload(projectId, target.storedName());
         fileStorageService.writeJson(fileStorageService.uploadsIndexPath(projectId), new UploadIndex(files));
+        fileStorageService.invalidateDerivedArtifacts(projectId);
     }
 
     private UploadIndex readIndex(String projectId) throws IOException {

@@ -8,6 +8,7 @@ public record ObjectOrientedAnalysisResult(
         String projectId,
         ObjectOrientedSummary summary,
         List<ClassMetric> classes,
-        OffsetDateTime analyzedAt
+        OffsetDateTime analyzedAt,
+        List<String> analyzedFileIds
 ) {
 }

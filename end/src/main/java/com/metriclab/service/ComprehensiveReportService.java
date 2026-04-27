@@ -67,6 +67,9 @@ public class ComprehensiveReportService {
         FunctionPointResult functionPoint = functionPointService.latestResult(projectId);
         UseCasePointResult useCasePoint = useCasePointService.latestResult(projectId);
         ModelAnalysisResult modelAnalysis = modelAnalysisService.latestResult(projectId);
+        if (!isFullProjectResult(modelAnalysis)) {
+            modelAnalysis = modelAnalysisService.analyzeProject(projectId);
+        }
 
         String content = buildReport(projectId, loc, complexity, oo, estimation, ai, functionPoint, useCasePoint, modelAnalysis);
         Path reportPath = fileStorageService.reportsDirectory(projectId).resolve("final-metric-report.md");
@@ -82,12 +85,12 @@ public class ComprehensiveReportService {
 
     private ComplexityAnalysisResult latestOrAnalyzeComplexity(String projectId) throws IOException {
         ComplexityAnalysisResult result = complexityAnalysisService.latestResult(projectId);
-        return result == null ? complexityAnalysisService.analyzeProject(projectId) : result;
+        return isFullProjectResult(result) ? result : complexityAnalysisService.analyzeProject(projectId);
     }
 
     private ObjectOrientedAnalysisResult latestOrAnalyzeObjectOriented(String projectId) throws IOException {
         ObjectOrientedAnalysisResult result = objectOrientedAnalysisService.latestResult(projectId);
-        return result == null ? objectOrientedAnalysisService.analyzeProject(projectId) : result;
+        return isFullProjectResult(result) ? result : objectOrientedAnalysisService.analyzeProject(projectId);
     }
 
     private EstimationResult latestOrAnalyzeEstimation(String projectId) throws IOException {
@@ -285,5 +288,17 @@ public class ComprehensiveReportService {
 
     private int modelClassRiskScore(ModelClassMetric item) {
         return item.classSize() + item.childCount() * 3 + item.inheritanceDepth() * 4;
+    }
+
+    private boolean isFullProjectResult(ComplexityAnalysisResult result) {
+        return result != null && (result.analyzedFileIds() == null || result.analyzedFileIds().isEmpty());
+    }
+
+    private boolean isFullProjectResult(ObjectOrientedAnalysisResult result) {
+        return result != null && (result.analyzedFileIds() == null || result.analyzedFileIds().isEmpty());
+    }
+
+    private boolean isFullProjectResult(ModelAnalysisResult result) {
+        return result != null && (result.analyzedFileIds() == null || result.analyzedFileIds().isEmpty());
     }
 }

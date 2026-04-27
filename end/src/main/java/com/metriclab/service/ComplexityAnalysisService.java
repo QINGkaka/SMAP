@@ -49,6 +49,7 @@ public class ComplexityAnalysisService {
 
     public synchronized ComplexityAnalysisResult analyzeProject(String projectId, AnalysisScopeRequest request) throws IOException {
         List<UploadedFileInfo> uploadedFiles = resolveTargetFiles(projectId, request);
+        List<String> analyzedFileIds = resolvedFileIds(uploadedFiles, request);
         List<MethodComplexityMetric> methodMetrics = new ArrayList<>();
         List<ComplexityFileMetric> fileMetrics = new ArrayList<>();
         for (UploadedFileInfo uploadedFile : uploadedFiles) {
@@ -80,7 +81,7 @@ public class ComplexityAnalysisService {
         ComplexitySummary summary = summarize(fileMetrics.size(), methodMetrics);
         OffsetDateTime now = OffsetDateTime.now();
         String taskId = createTaskId(now);
-        ComplexityAnalysisResult result = new ComplexityAnalysisResult(taskId, projectId, summary, fileMetrics, methodMetrics, now);
+        ComplexityAnalysisResult result = new ComplexityAnalysisResult(taskId, projectId, summary, fileMetrics, methodMetrics, now, analyzedFileIds);
         Path taskDirectory = fileStorageService.taskDirectory(projectId, taskId);
         fileStorageService.writeJson(taskDirectory.resolve("task.json"), new TaskFile(taskId, projectId, "COMPLEXITY", "FINISHED", now));
         fileStorageService.writeJson(taskDirectory.resolve("complexity-result.json"), result);
@@ -155,6 +156,16 @@ public class ComplexityAnalysisService {
             }
         }
         return units;
+    }
+
+    private List<String> resolvedFileIds(List<UploadedFileInfo> uploadedFiles, AnalysisScopeRequest request) {
+        List<String> fileIds = request == null ? List.of() : request.fileIds();
+        if (fileIds == null || fileIds.isEmpty()) {
+            return List.of();
+        }
+        return uploadedFiles.stream()
+                .map(UploadedFileInfo::id)
+                .toList();
     }
 
     private AnalysisUnit analyzeJavaSource(String fileName, String sourceUploadName, String source) {

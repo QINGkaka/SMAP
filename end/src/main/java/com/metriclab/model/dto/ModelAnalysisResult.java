@@ -8,6 +8,7 @@ public record ModelAnalysisResult(
         String projectId,
         ModelAnalysisSummary summary,
         List<ModelClassMetric> classes,
-        OffsetDateTime analyzedAt
+        OffsetDateTime analyzedAt,
+        List<String> analyzedFileIds
 ) {
 }

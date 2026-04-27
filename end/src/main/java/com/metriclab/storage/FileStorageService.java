@@ -126,6 +126,32 @@ public class FileStorageService {
         return projectDirectory(projectId).resolve("reports");
     }
 
+    public void invalidateDerivedArtifacts(String projectId) throws IOException {
+        List<Path> stalePaths = List.of(
+                latestLocResultPath(projectId),
+                latestComplexityResultPath(projectId),
+                latestObjectOrientedResultPath(projectId),
+                latestEstimationResultPath(projectId),
+                latestModelAnalysisResultPath(projectId),
+                latestAiAnalysisResultPath(projectId),
+                reportsDirectory(projectId).resolve("loc-report.md"),
+                reportsDirectory(projectId).resolve("loc-report-meta.json"),
+                reportsDirectory(projectId).resolve("complexity-report.md"),
+                reportsDirectory(projectId).resolve("complexity-report-meta.json"),
+                reportsDirectory(projectId).resolve("object-oriented-report.md"),
+                reportsDirectory(projectId).resolve("object-oriented-report-meta.json"),
+                reportsDirectory(projectId).resolve("estimation-report.md"),
+                reportsDirectory(projectId).resolve("estimation-report-meta.json"),
+                reportsDirectory(projectId).resolve("model-analysis-report.md"),
+                reportsDirectory(projectId).resolve("ai-analysis.md"),
+                reportsDirectory(projectId).resolve("final-metric-report.md"),
+                reportsDirectory(projectId).resolve("metrics.xml")
+        );
+        for (Path stalePath : stalePaths) {
+            Files.deleteIfExists(stalePath);
+        }
+    }
+
     public String storeUpload(String projectId, MultipartFile file, String fileId) throws IOException {
         String originalName = StringUtils.cleanPath(file.getOriginalFilename() == null ? "upload.bin" : file.getOriginalFilename());
         String extension = extensionOf(originalName);

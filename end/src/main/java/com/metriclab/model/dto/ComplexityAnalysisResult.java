@@ -9,6 +9,7 @@ public record ComplexityAnalysisResult(
         ComplexitySummary summary,
         List<ComplexityFileMetric> files,
         List<MethodComplexityMetric> methods,
-        OffsetDateTime analyzedAt
+        OffsetDateTime analyzedAt,
+        List<String> analyzedFileIds
 ) {
 }

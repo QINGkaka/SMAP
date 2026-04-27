@@ -39,6 +39,7 @@ function scoreTotal(values) {
 
 const useCaseTechnicalWeights = [2, 1, 1, 1, 1, 0.5, 0.5, 2, 1, 1, 1, 1, 1]
 const useCaseEnvironmentalWeights = [1.5, 0.5, 1, 0.5, 1, 2, -1, -1]
+const uploadDependentMetricKeys = ['loc', 'control-flow', 'object-oriented', 'estimation', 'ai', 'model-analysis']
 
 function weightedScoreTotal(values, weights) {
   return Math.round(values.reduce((total, value, index) => {
@@ -278,9 +279,17 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
     })
   }
 
-  function markMetricResultsStale(message) {
-    Object.values(metricModules).forEach(module => {
+  function markMetricResultsStale(message, keys = uploadDependentMetricKeys) {
+    Object.entries(metricModules).forEach(([key, module]) => {
+      if (!keys.includes(key)) {
+        return
+      }
+      module.result.value = null
       module.message.value = message
+      module.error.value = ''
+      if (module.reportMessage) {
+        module.reportMessage.value = ''
+      }
     })
   }
 

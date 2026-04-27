@@ -11,12 +11,23 @@ async function request(path, options = {}) {
     headers,
     ...options
   })
+  const raw = await response.text()
+  let result = null
+  if (raw) {
+    try {
+      result = JSON.parse(raw)
+    } catch {
+      result = null
+    }
+  }
   if (!response.ok) {
+    throw new Error(result?.message || `HTTP ${response.status}`)
+  }
+  if (!result) {
     throw new Error(`HTTP ${response.status}`)
   }
-  const result = await response.json()
   if (!result.success) {
-    throw new Error(result.message || '请求失败')
+    throw new Error(result.message || '璇锋眰澶辫触')
   }
   return result
 }

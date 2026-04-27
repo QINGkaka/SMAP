@@ -561,12 +561,37 @@ const resultComponentSummaries = computed(() => {
   gap: 14px;
 }
 
+.compact-function-point-view :deep(.loc-header) {
+  padding: 14px 18px;
+}
+
+.compact-function-point-view :deep(.metric-action-copy) {
+  gap: 0;
+}
+
+.compact-function-point-view :deep(.metric-action-copy .eyebrow) {
+  display: none;
+}
+
+.compact-function-point-view :deep(.metric-action-copy h2) {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.compact-function-point-view :deep(.metric-action-buttons .primary-button),
+.compact-function-point-view :deep(.metric-action-buttons .secondary-button) {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
 .mode-panel,
 .function-point-panel,
 .function-point-toggle,
 .result-table-card {
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: #ffffff;
+  border: 1px solid var(--color-border, #e5e6eb);
   border-radius: 8px;
 }
 
@@ -574,6 +599,7 @@ const resultComponentSummaries = computed(() => {
   padding: 16px 18px;
   display: grid;
   gap: 14px;
+  box-shadow: var(--shadow-soft, 0 2px 8px rgba(29, 33, 41, 0.04));
 }
 
 .mode-panel-head {
@@ -586,7 +612,7 @@ const resultComponentSummaries = computed(() => {
 .mode-panel-head strong,
 .result-table-head strong {
   display: block;
-  color: #f8fafc;
+  color: var(--color-text, #1d2129);
 }
 
 .mode-panel-head p,
@@ -594,22 +620,23 @@ const resultComponentSummaries = computed(() => {
 .detail-hint,
 .factor-hint {
   margin: 4px 0 0;
-  color: #94a3b8;
+  color: var(--color-text-secondary, #86909c);
   font-size: 12px;
   line-height: 1.5;
 }
 
 .mode-toggle {
   display: inline-flex;
-  border: 1px solid rgba(96, 165, 250, 0.28);
+  border: 1px solid var(--color-border, #e5e6eb);
   border-radius: 8px;
   overflow: hidden;
+  background: #f7f8fa;
 }
 
 .mode-button {
   border: 0;
   background: transparent;
-  color: #cbd5e1;
+  color: var(--color-text-secondary, #86909c);
   padding: 10px 14px;
   font: inherit;
   cursor: pointer;
@@ -617,8 +644,8 @@ const resultComponentSummaries = computed(() => {
 }
 
 .mode-button.active {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.88), rgba(14, 165, 233, 0.82));
-  color: #eff6ff;
+  background: #edf3ff;
+  color: var(--color-primary-strong, #165dff);
 }
 
 .fp-overview-grid {
@@ -632,25 +659,25 @@ const resultComponentSummaries = computed(() => {
   gap: 4px;
   padding: 14px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.52);
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: #ffffff;
+  border: 1px solid var(--color-border-soft, #f0f1f5);
 }
 
 .fp-overview-card span,
 .fp-overview-card small,
 .fp-overview-card em {
-  color: #94a3b8;
+  color: var(--color-text-secondary, #86909c);
   font-style: normal;
   font-size: 12px;
 }
 
 .fp-overview-card strong {
-  color: #f8fafc;
+  color: var(--color-text, #1d2129);
   font-size: 22px;
 }
 
 .fp-overview-card-accent {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(30, 64, 175, 0.72));
+  background: #f7faff;
 }
 
 .function-point-panel-list {
@@ -683,13 +710,13 @@ const resultComponentSummaries = computed(() => {
 .function-point-panel-title strong,
 .function-point-panel-meta span,
 .function-point-toggle summary strong {
-  color: #f8fafc;
+  color: var(--color-text, #1d2129);
 }
 
 .function-point-panel-title small,
 .function-point-panel-meta em,
 .function-point-toggle summary span {
-  color: #94a3b8;
+  color: var(--color-text-secondary, #86909c);
   font-style: normal;
 }
 
@@ -709,7 +736,7 @@ const resultComponentSummaries = computed(() => {
 .function-point-panel-body span,
 .factor-score-grid span,
 .detail-table-head span {
-  color: #cbd5e1;
+  color: var(--color-text-secondary, #86909c);
   font-size: 12px;
 }
 
@@ -717,10 +744,10 @@ const resultComponentSummaries = computed(() => {
 .factor-score-grid input,
 .detail-row input {
   width: 100%;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--color-border, #e5e6eb);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.78);
-  color: #f8fafc;
+  background: #ffffff;
+  color: var(--color-text, #1d2129);
   padding: 10px 12px;
   font: inherit;
 }
@@ -729,8 +756,8 @@ const resultComponentSummaries = computed(() => {
 .factor-score-grid input:focus,
 .detail-row input:focus {
   outline: none;
-  border-color: rgba(96, 165, 250, 0.72);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+  border-color: var(--color-primary, #4080ff);
+  box-shadow: 0 0 0 4px rgba(64, 128, 255, 0.12);
 }
 
 .detailed-body {
@@ -753,7 +780,8 @@ const resultComponentSummaries = computed(() => {
 .detail-row {
   padding: 10px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.42);
+  background: #f7f8fa;
+  border: 1px solid var(--color-border-soft, #f0f1f5);
 }
 
 .detail-chip,
@@ -763,17 +791,18 @@ const resultComponentSummaries = computed(() => {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: rgba(30, 41, 59, 0.82);
-  color: #e2e8f0;
+  background: #edf3ff;
+  color: var(--color-primary-strong, #165dff);
   font-size: 13px;
+  font-weight: 600;
 }
 
 .icon-button,
 .add-detail-button {
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--color-border, #e5e6eb);
   border-radius: 8px;
-  background: rgba(30, 41, 59, 0.8);
-  color: #e2e8f0;
+  background: #ffffff;
+  color: var(--color-text, #1d2129);
   cursor: pointer;
   font: inherit;
 }
@@ -790,8 +819,15 @@ const resultComponentSummaries = computed(() => {
   padding: 10px 14px;
 }
 
+.icon-button:hover,
+.add-detail-button:hover {
+  border-color: #c9cdd4;
+  background: #f7f8fa;
+}
+
 .function-point-toggle {
   padding-bottom: 18px;
+  box-shadow: var(--shadow-soft, 0 2px 8px rgba(29, 33, 41, 0.04));
 }
 
 .factor-hint {
@@ -824,23 +860,24 @@ const resultComponentSummaries = computed(() => {
   gap: 6px;
   padding: 14px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: #f7f8fa;
+  border: 1px solid var(--color-border-soft, #f0f1f5);
 }
 
 .loc-summary-grid span {
-  color: #94a3b8;
+  color: #68778a;
   font-size: 12px;
 }
 
 .loc-summary-grid strong {
-  color: #f8fafc;
+  color: #1e293b;
 }
 
 .result-table-card {
   padding: 16px 18px 18px;
   display: grid;
   gap: 12px;
+  box-shadow: var(--shadow-soft, 0 2px 8px rgba(29, 33, 41, 0.04));
 }
 
 .result-table {
@@ -851,15 +888,20 @@ const resultComponentSummaries = computed(() => {
 
 .result-table th,
 .result-table td {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  border-bottom: 1px solid var(--color-border-soft, #f0f1f5);
   padding: 10px 8px;
   text-align: left;
-  color: #e2e8f0;
+  color: var(--color-text, #1d2129);
 }
 
 .result-table th {
-  color: #94a3b8;
+  color: var(--color-text-secondary, #86909c);
   font-weight: 600;
+  background: #f7f8fa;
+}
+
+.result-table tbody tr:hover td {
+  background: #f7f8fa;
 }
 
 @media (max-width: 960px) {

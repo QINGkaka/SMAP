@@ -49,6 +49,7 @@ public class ModelAnalysisService {
 
     public synchronized ModelAnalysisResult analyzeProject(String projectId, AnalysisScopeRequest request) throws IOException {
         List<UploadedFileInfo> files = resolveTargetFiles(projectId, request);
+        List<String> analyzedFileIds = resolvedFileIds(files, request);
         Map<String, MutableModelClass> classes = new LinkedHashMap<>();
         int modelFileCount = 0;
 
@@ -81,7 +82,7 @@ public class ModelAnalysisService {
 
         OffsetDateTime now = OffsetDateTime.now();
         String taskId = createTaskId(now);
-        ModelAnalysisResult result = new ModelAnalysisResult(taskId, projectId, summary, classMetrics, now);
+        ModelAnalysisResult result = new ModelAnalysisResult(taskId, projectId, summary, classMetrics, now, analyzedFileIds);
         Path taskDirectory = fileStorageService.taskDirectory(projectId, taskId);
         fileStorageService.writeJson(taskDirectory.resolve("task.json"), new TaskFile(taskId, projectId, "MODEL_ANALYSIS", "FINISHED", now));
         fileStorageService.writeJson(taskDirectory.resolve("model-analysis-result.json"), result);
@@ -150,6 +151,16 @@ public class ModelAnalysisService {
         Document document = factory.newDocumentBuilder().parse(path.toFile());
         document.getDocumentElement().normalize();
         collectClassElements(document.getDocumentElement(), sourceName, classes);
+    }
+
+    private List<String> resolvedFileIds(List<UploadedFileInfo> uploadedFiles, AnalysisScopeRequest request) {
+        List<String> fileIds = request == null ? List.of() : request.fileIds();
+        if (fileIds == null || fileIds.isEmpty()) {
+            return List.of();
+        }
+        return uploadedFiles.stream()
+                .map(UploadedFileInfo::id)
+                .toList();
     }
 
     private void collectClassElements(Element root, String sourceName, Map<String, MutableModelClass> classes) {

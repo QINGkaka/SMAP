@@ -60,12 +60,12 @@ public class XmlExportService {
         }
 
         ComplexityAnalysisResult complexity = complexityAnalysisService.latestResult(projectId);
-        if (complexity == null) {
+        if (!isFullProjectResult(complexity)) {
             complexity = complexityAnalysisService.analyzeProject(projectId);
         }
 
         ObjectOrientedAnalysisResult oo = objectOrientedAnalysisService.latestResult(projectId);
-        if (oo == null) {
+        if (!isFullProjectResult(oo)) {
             oo = objectOrientedAnalysisService.analyzeProject(projectId);
         }
 
@@ -77,6 +77,9 @@ public class XmlExportService {
         FunctionPointResult functionPoint = functionPointService.latestResult(projectId);
         UseCasePointResult useCasePoint = useCasePointService.latestResult(projectId);
         ModelAnalysisResult modelAnalysis = modelAnalysisService.latestResult(projectId);
+        if (!isFullProjectResult(modelAnalysis)) {
+            modelAnalysis = modelAnalysisService.analyzeProject(projectId);
+        }
 
         String content = buildXml(projectId, loc, complexity, oo, estimation, functionPoint, useCasePoint, modelAnalysis);
         Path reportPath = fileStorageService.reportsDirectory(projectId).resolve("metrics.xml");
@@ -288,5 +291,17 @@ public class XmlExportService {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("'", "&apos;");
+    }
+
+    private boolean isFullProjectResult(ComplexityAnalysisResult result) {
+        return result != null && (result.analyzedFileIds() == null || result.analyzedFileIds().isEmpty());
+    }
+
+    private boolean isFullProjectResult(ObjectOrientedAnalysisResult result) {
+        return result != null && (result.analyzedFileIds() == null || result.analyzedFileIds().isEmpty());
+    }
+
+    private boolean isFullProjectResult(ModelAnalysisResult result) {
+        return result != null && (result.analyzedFileIds() == null || result.analyzedFileIds().isEmpty());
     }
 }

@@ -23,7 +23,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -133,9 +135,67 @@ class MetricAnalysisServiceIntegrationTest {
         );
 
         assertEquals(1, complexity.summary().fileCount());
+        assertEquals(List.of(enrollmentService.id()), complexity.analyzedFileIds());
         assertTrue(objectOriented.classes().stream().allMatch(item -> "EnrollmentService.java".equals(item.fileName())));
+        assertEquals(List.of(enrollmentService.id()), objectOriented.analyzedFileIds());
         assertEquals(1, model.summary().fileCount());
         assertTrue(model.classes().stream().allMatch(item -> "academic-model.xml".equals(item.sourceUploadName())));
+        assertEquals(List.of(modelXml.id()), model.analyzedFileIds());
+    }
+
+    @Test
+    void invalidatesUploadDependentLatestResultsWhenProjectFilesChange() throws Exception {
+        ProjectInfo project = createProjectWithSamples();
+
+        complexityAnalysisService.analyzeProject(project.id());
+        objectOrientedAnalysisService.analyzeProject(project.id());
+        modelAnalysisService.analyzeProject(project.id());
+
+        assertNotNull(complexityAnalysisService.latestResult(project.id()));
+        assertNotNull(objectOrientedAnalysisService.latestResult(project.id()));
+        assertNotNull(modelAnalysisService.latestResult(project.id()));
+
+        uploadService.uploadFile(
+                project.id(),
+                new MockMultipartFile(
+                        "file",
+                        "ExtraSample.java",
+                        "text/x-java-source",
+                        "class ExtraSample { void ping() { if (true) { } } }".getBytes()
+                )
+        );
+
+        assertNull(complexityAnalysisService.latestResult(project.id()));
+        assertNull(objectOrientedAnalysisService.latestResult(project.id()));
+        assertNull(modelAnalysisService.latestResult(project.id()));
+    }
+
+    @Test
+    void fullProjectAnalysisRemainsRecoverableAfterSelectedFileRun() throws Exception {
+        ProjectInfo project = createProjectWithSamples();
+        ComplexityAnalysisResult fullComplexity = complexityAnalysisService.analyzeProject(project.id());
+        ObjectOrientedAnalysisResult fullObjectOriented = objectOrientedAnalysisService.analyzeProject(project.id());
+
+        List<UploadedFileInfo> files = uploadService.listFiles(project.id());
+        UploadedFileInfo enrollmentService = files.stream()
+                .filter(file -> file.originalName().equals("EnrollmentService.java"))
+                .findFirst()
+                .orElseThrow();
+
+        complexityAnalysisService.analyzeProject(project.id(), new AnalysisScopeRequest(List.of(enrollmentService.id())));
+        objectOrientedAnalysisService.analyzeProject(project.id(), new AnalysisScopeRequest(List.of(enrollmentService.id())));
+
+        ComplexityAnalysisResult rerunComplexity = complexityAnalysisService.analyzeProject(project.id());
+        ObjectOrientedAnalysisResult rerunObjectOriented = objectOrientedAnalysisService.analyzeProject(project.id());
+
+        assertTrue(fullComplexity.analyzedFileIds().isEmpty());
+        assertTrue(fullObjectOriented.analyzedFileIds().isEmpty());
+        assertTrue(rerunComplexity.analyzedFileIds().isEmpty());
+        assertTrue(rerunObjectOriented.analyzedFileIds().isEmpty());
+        assertEquals(fullComplexity.summary().fileCount(), rerunComplexity.summary().fileCount());
+        assertEquals(fullObjectOriented.summary().classCount(), rerunObjectOriented.summary().classCount());
+        assertFalse(rerunComplexity.methods().isEmpty());
+        assertFalse(rerunObjectOriented.classes().isEmpty());
     }
 
     private ProjectInfo createProjectWithSamples() throws Exception {
