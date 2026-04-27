@@ -150,6 +150,7 @@ public class XmlExportService {
                 .append("\" methodCount=\"").append(oo.summary().methodCount())
                 .append("\" fieldCount=\"").append(oo.summary().fieldCount())
                 .append("\" averageCbo=\"").append(oo.summary().averageCbo())
+                .append("\" averageRfc=\"").append(oo.summary().averageRfc())
                 .append("\" maxDit=\"").append(oo.summary().maxDit())
                 .append("\" highRiskClassCount=\"").append(oo.summary().highRiskClassCount())
                 .append("\" />\n");
@@ -160,6 +161,7 @@ public class XmlExportService {
                     .append("\" file=\"").append(xml(item.fileName()))
                     .append("\" source=\"").append(xml(item.sourceUploadName()))
                     .append("\" cbo=\"").append(item.cbo())
+                    .append("\" rfc=\"").append(item.rfc())
                     .append("\" dit=\"").append(item.dit())
                     .append("\" noc=\"").append(item.noc())
                     .append("\" noa=\"").append(item.noa())
@@ -189,7 +191,8 @@ public class XmlExportService {
         if (functionPoint != null) {
             builder.append("  <functionPoint taskId=\"").append(xml(functionPoint.taskId())).append("\" analyzedAt=\"")
                     .append(xml(functionPoint.analyzedAt().toString())).append("\">\n");
-            builder.append("    <summary externalInputs=\"").append(functionPoint.externalInputs())
+            builder.append("    <summary countMode=\"").append(xml(functionPoint.countMode()))
+                    .append("\" externalInputs=\"").append(functionPoint.externalInputs())
                     .append("\" externalOutputs=\"").append(functionPoint.externalOutputs())
                     .append("\" externalInquiries=\"").append(functionPoint.externalInquiries())
                     .append("\" internalLogicalFiles=\"").append(functionPoint.internalLogicalFiles())
@@ -199,6 +202,33 @@ public class XmlExportService {
                     .append("\" valueAdjustmentFactor=\"").append(functionPoint.valueAdjustmentFactor())
                     .append("\" adjustedFunctionPoints=\"").append(functionPoint.adjustedFunctionPoints())
                     .append("\" />\n");
+            if (functionPoint.componentSummaries() != null && !functionPoint.componentSummaries().isEmpty()) {
+                builder.append("    <components>\n");
+                functionPoint.componentSummaries().forEach(item -> builder.append("      <component code=\"")
+                        .append(xml(item.code()))
+                        .append("\" label=\"").append(xml(item.label()))
+                        .append("\" itemCount=\"").append(item.itemCount())
+                        .append("\" lowCount=\"").append(item.lowCount())
+                        .append("\" averageCount=\"").append(item.averageCount())
+                        .append("\" highCount=\"").append(item.highCount())
+                        .append("\" functionPoints=\"").append(item.functionPoints())
+                        .append("\" />\n"));
+                builder.append("    </components>\n");
+            }
+            if (functionPoint.detailItems() != null && !functionPoint.detailItems().isEmpty()) {
+                builder.append("    <detailItems>\n");
+                functionPoint.detailItems().forEach(item -> builder.append("      <item code=\"")
+                        .append(xml(item.code()))
+                        .append("\" label=\"").append(xml(item.label()))
+                        .append("\" name=\"").append(xml(item.name()))
+                        .append("\" det=\"").append(item.det())
+                        .append("\" ret=\"").append(item.ret() == null ? "" : item.ret())
+                        .append("\" ftr=\"").append(item.ftr() == null ? "" : item.ftr())
+                        .append("\" complexity=\"").append(xml(item.complexity()))
+                        .append("\" functionPoints=\"").append(item.functionPoints())
+                        .append("\" />\n"));
+                builder.append("    </detailItems>\n");
+            }
             builder.append("  </functionPoint>\n");
         }
         if (useCasePoint != null) {
@@ -207,7 +237,9 @@ public class XmlExportService {
             builder.append("    <summary actorWeight=\"").append(useCasePoint.actorWeight())
                     .append("\" useCaseWeight=\"").append(useCasePoint.useCaseWeight())
                     .append("\" unadjustedUseCasePoints=\"").append(useCasePoint.unadjustedUseCasePoints())
+                    .append("\" technicalFactorTotal=\"").append(useCasePoint.technicalFactorTotal())
                     .append("\" technicalComplexityFactor=\"").append(useCasePoint.technicalComplexityFactor())
+                    .append("\" environmentalFactorTotal=\"").append(useCasePoint.environmentalFactorTotal())
                     .append("\" environmentalComplexityFactor=\"").append(useCasePoint.environmentalComplexityFactor())
                     .append("\" useCasePoints=\"").append(useCasePoint.useCasePoints())
                     .append("\" estimatedHours=\"").append(useCasePoint.estimatedHours())

@@ -1,5 +1,6 @@
 <script setup>
 import MetricActionHeader from '../components/metric/MetricActionHeader.vue'
+import MetricFileScopePanel from '../components/metric/MetricFileScopePanel.vue'
 import MetricStatusMessages from '../components/metric/MetricStatusMessages.vue'
 
 defineProps({
@@ -23,13 +24,32 @@ defineProps({
     type: String,
     default: ''
   },
+  scopeMode: {
+    type: String,
+    default: 'project'
+  },
+  availableFiles: {
+    type: Array,
+    default: () => []
+  },
+  selectedFileIds: {
+    type: Array,
+    default: () => []
+  },
   formatRiskLabel: {
     type: Function,
     required: true
   }
 })
 
-defineEmits(['analyze', 'export'])
+defineEmits([
+  'analyze',
+  'export',
+  'update:scopeMode',
+  'toggle-file',
+  'select-all-files',
+  'clear-selected-files'
+])
 </script>
 
 <template>
@@ -46,6 +66,16 @@ defineEmits(['analyze', 'export'])
   <MetricStatusMessages
     :success-messages="[message, reportMessage]"
     :error-message="errorMessage"
+  />
+  <MetricFileScopePanel
+    :scope-mode="scopeMode"
+    :available-files="availableFiles"
+    :selected-file-ids="selectedFileIds"
+    supported-label=".xml、.xmi、.oom"
+    @update:scope-mode="$emit('update:scopeMode', $event)"
+    @toggle-file="$emit('toggle-file', $event)"
+    @select-all="$emit('select-all-files')"
+    @clear-selection="$emit('clear-selected-files')"
   />
   <div v-if="!result" class="empty-state loc-empty">
     暂无模型度量结果。请上传 `.xml`、`.xmi` 或 `.oom` 模型文件，然后点击“开始模型分析”。

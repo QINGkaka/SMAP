@@ -1,5 +1,6 @@
 <script setup>
 import MetricActionHeader from '../components/metric/MetricActionHeader.vue'
+import MetricFileScopePanel from '../components/metric/MetricFileScopePanel.vue'
 import MetricStatusMessages from '../components/metric/MetricStatusMessages.vue'
 
 defineProps({
@@ -31,13 +32,32 @@ defineProps({
     type: Array,
     default: () => []
   },
+  scopeMode: {
+    type: String,
+    default: 'project'
+  },
+  availableFiles: {
+    type: Array,
+    default: () => []
+  },
+  selectedFileIds: {
+    type: Array,
+    default: () => []
+  },
   formatRiskLabel: {
     type: Function,
     required: true
   }
 })
 
-defineEmits(['analyze', 'export'])
+defineEmits([
+  'analyze',
+  'export',
+  'update:scopeMode',
+  'toggle-file',
+  'select-all-files',
+  'clear-selected-files'
+])
 </script>
 
 <template>
@@ -55,15 +75,21 @@ defineEmits(['analyze', 'export'])
     :success-messages="[message, reportMessage]"
     :error-message="errorMessage"
   />
+  <MetricFileScopePanel
+    :scope-mode="scopeMode"
+    :available-files="availableFiles"
+    :selected-file-ids="selectedFileIds"
+    supported-label=".java、.zip"
+    @update:scope-mode="$emit('update:scopeMode', $event)"
+    @toggle-file="$emit('toggle-file', $event)"
+    @select-all="$emit('select-all-files')"
+    @clear-selection="$emit('clear-selected-files')"
+  />
   <div v-if="!result" class="empty-state loc-empty">
     暂无面向对象度量结果。请先上传 `.java` 文件或包含 Java 文件的 `.zip`，然后点击“开始 CK/LK 分析”。
   </div>
   <div v-else class="loc-result">
     <div class="loc-summary-grid">
-      <article>
-        <span>Java 文件数</span>
-        <strong>{{ result.summary.fileCount }}</strong>
-      </article>
       <article>
         <span>类/接口数</span>
         <strong>{{ result.summary.classCount + result.summary.interfaceCount }}</strong>
@@ -73,12 +99,16 @@ defineEmits(['analyze', 'export'])
         <strong>{{ result.summary.averageCbo }}</strong>
       </article>
       <article>
+        <span>平均 RFC</span>
+        <strong>{{ result.summary.averageRfc }}</strong>
+      </article>
+      <article>
         <span>风险类</span>
         <strong>{{ result.summary.highRiskClassCount }}</strong>
       </article>
     </div>
     <div class="oo-explain">
-      <span>CK：CBO、DIT、NOC、WMC、LCOM</span>
+      <span>CK：CBO、RFC、DIT、NOC、WMC、LCOM</span>
       <span>LK：NOA、NOO、CS</span>
     </div>
     <div class="radar-wrap">
@@ -117,6 +147,7 @@ defineEmits(['analyze', 'export'])
             <th>类型</th>
             <th>文件</th>
             <th>CBO</th>
+            <th>RFC</th>
             <th>DIT</th>
             <th>NOC</th>
             <th>NOA</th>
@@ -133,6 +164,7 @@ defineEmits(['analyze', 'export'])
             <td>{{ item.type }}</td>
             <td>{{ item.fileName }}</td>
             <td>{{ item.cbo }}</td>
+            <td>{{ item.rfc }}</td>
             <td>{{ item.dit }}</td>
             <td>{{ item.noc }}</td>
             <td>{{ item.noa }}</td>

@@ -1,5 +1,6 @@
 package com.metriclab.service;
 
+import com.metriclab.model.dto.AnalysisScopeRequest;
 import com.metriclab.model.dto.ModelAnalysisReportResult;
 import com.metriclab.model.dto.ModelAnalysisResult;
 import com.metriclab.model.dto.ModelAnalysisSummary;
@@ -43,7 +44,11 @@ public class ModelAnalysisService {
     }
 
     public synchronized ModelAnalysisResult analyzeProject(String projectId) throws IOException {
-        List<UploadedFileInfo> files = uploadService.listFiles(projectId);
+        return analyzeProject(projectId, null);
+    }
+
+    public synchronized ModelAnalysisResult analyzeProject(String projectId, AnalysisScopeRequest request) throws IOException {
+        List<UploadedFileInfo> files = resolveTargetFiles(projectId, request);
         Map<String, MutableModelClass> classes = new LinkedHashMap<>();
         int modelFileCount = 0;
 
@@ -90,7 +95,11 @@ public class ModelAnalysisService {
         if (!fileStorageService.exists(latestPath)) {
             return null;
         }
-        return fileStorageService.readJson(latestPath, ModelAnalysisResult.class);
+        try {
+            return fileStorageService.readJson(latestPath, ModelAnalysisResult.class);
+        } catch (IOException exception) {
+            return null;
+        }
     }
 
     public ModelAnalysisReportResult exportMarkdownReport(String projectId) throws IOException {
@@ -107,6 +116,28 @@ public class ModelAnalysisService {
 
     private boolean isModelFile(UploadedFileInfo file) {
         return Set.of("xml", "xmi", "oom").contains(file.fileType());
+    }
+
+    private List<UploadedFileInfo> resolveTargetFiles(String projectId, AnalysisScopeRequest request) throws IOException {
+        List<UploadedFileInfo> uploadedFiles = uploadService.listFiles(projectId);
+        List<String> fileIds = request == null ? List.of() : request.fileIds();
+        if (fileIds == null || fileIds.isEmpty()) {
+            return uploadedFiles;
+        }
+        Set<String> selectedIds = Set.copyOf(fileIds);
+        List<UploadedFileInfo> selectedFiles = uploadedFiles.stream()
+                .filter(file -> selectedIds.contains(file.id()))
+                .toList();
+        if (selectedFiles.size() != selectedIds.size()) {
+            throw new IllegalArgumentException("所选文件中存在无效文件，请刷新项目文件列表后重试");
+        }
+        List<UploadedFileInfo> analyzableFiles = selectedFiles.stream()
+                .filter(this::isModelFile)
+                .toList();
+        if (analyzableFiles.isEmpty()) {
+            throw new IllegalArgumentException("当前选择中没有可分析的模型文件，请选择 .xml、.xmi 或 .oom 文件");
+        }
+        return analyzableFiles;
     }
 
     private void parseModelFile(Path path, String sourceName, Map<String, MutableModelClass> classes)

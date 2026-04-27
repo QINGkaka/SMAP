@@ -3,6 +3,7 @@ package com.metriclab.service;
 import com.metriclab.model.dto.EstimationReportResult;
 import com.metriclab.model.dto.EstimationRequest;
 import com.metriclab.model.dto.EstimationResult;
+import com.metriclab.model.dto.FunctionPointResult;
 import com.metriclab.model.dto.LocAnalysisResult;
 import com.metriclab.storage.FileStorageService;
 import org.springframework.stereotype.Service;
@@ -20,15 +21,23 @@ import java.util.UUID;
 public class EstimationService {
 
     private static final double DEFAULT_COST_PER_PERSON_MONTH = 20000.0;
+    private static final double JAVA_SLOC_PER_FUNCTION_POINT = 60.0;
 
     private final FileStorageService fileStorageService;
     private final UploadService uploadService;
     private final LocAnalysisService locAnalysisService;
+    private final FunctionPointService functionPointService;
 
-    public EstimationService(FileStorageService fileStorageService, UploadService uploadService, LocAnalysisService locAnalysisService) {
+    public EstimationService(
+            FileStorageService fileStorageService,
+            UploadService uploadService,
+            LocAnalysisService locAnalysisService,
+            FunctionPointService functionPointService
+    ) {
         this.fileStorageService = fileStorageService;
         this.uploadService = uploadService;
         this.locAnalysisService = locAnalysisService;
+        this.functionPointService = functionPointService;
     }
 
     public synchronized EstimationResult analyzeProject(String projectId, EstimationRequest request) throws IOException {
@@ -100,10 +109,15 @@ public class EstimationService {
             latestLoc = locAnalysisService.analyzeProject(projectId);
         }
         double kloc = latestLoc.summary().sourceLines() / 1000.0;
-        if (kloc <= 0) {
-            throw new IllegalArgumentException("当前项目有效代码行为 0，无法进行工作量估算");
+        if (kloc > 0) {
+            return new Scale(kloc, "最新 LoC 结果自动换算");
         }
-        return new Scale(kloc, "最新 LoC 结果自动换算");
+        FunctionPointResult latestFunctionPoint = functionPointService.latestResult(projectId);
+        if (latestFunctionPoint != null && latestFunctionPoint.adjustedFunctionPoints() > 0) {
+            double functionPointKloc = latestFunctionPoint.adjustedFunctionPoints() * JAVA_SLOC_PER_FUNCTION_POINT / 1000.0;
+            return new Scale(functionPointKloc, "按功能点结果和课件中的 Java 60 SLOC/FP 换算");
+        }
+        throw new IllegalArgumentException("当前项目有效代码行为 0，且没有可用的功能点结果，无法进行工作量估算");
     }
 
     private double normalizePositive(Double value, double defaultValue) {

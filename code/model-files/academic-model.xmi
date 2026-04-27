@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XMI xmlns:xmi="http://www.omg.org/XMI">
+  <ownedMember xmi:type="uml:Class" xmi:id="xmi-course" name="Course">
+    <ownedAttribute name="code" />
+    <ownedAttribute name="title" />
+    <ownedAttribute name="capacity" />
+    <ownedOperation name="isFull" />
+    <ownedOperation name="formatLabel" />
+    <ownedOperation name="hasCode" />
+  </ownedMember>
+  <ownedMember xmi:type="uml:Class" xmi:id="xmi-split" name="SplitStorage">
+    <ownedAttribute name="openCount" />
+    <ownedAttribute name="closeCount" />
+    <ownedOperation name="readOpen" />
+    <ownedOperation name="resetOpen" />
+    <ownedOperation name="readClose" />
+    <ownedOperation name="resetClose" />
+  </ownedMember>
+  <ownedMember xmi:type="uml:Class" xmi:id="xmi-adapter" name="AverageScoreStrategy">
+    <ownedOperation name="normalize" />
+  </ownedMember>
+  <ownedMember xmi:type="uml:Interface" xmi:id="xmi-score" name="ScoreStrategy">
+    <ownedOperation name="normalize" />
+  </ownedMember>
+</XMI>

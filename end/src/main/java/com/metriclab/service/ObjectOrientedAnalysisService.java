@@ -1,5 +1,6 @@
 package com.metriclab.service;
 
+import com.metriclab.model.dto.AnalysisScopeRequest;
 import com.metriclab.model.dto.ClassMetric;
 import com.metriclab.model.dto.ObjectOrientedAnalysisResult;
 import com.metriclab.model.dto.ObjectOrientedReportResult;
@@ -34,7 +35,7 @@ public class ObjectOrientedAnalysisService {
     private static final Pattern EXTENDS_PATTERN = Pattern.compile("\\bextends\\s+([A-Za-z_$][A-Za-z0-9_$]*)");
     private static final Pattern IMPLEMENTS_PATTERN = Pattern.compile("\\bimplements\\s+([^\\{]+)");
     private static final Pattern TYPE_REFERENCE = Pattern.compile("\\b[A-Z][A-Za-z0-9_$]*\\b");
-    private static final Pattern DECISION_KEYWORDS = Pattern.compile("\\b(if|for|while|case|catch|switch|do)\\b");
+    private static final Pattern DECISION_KEYWORDS = Pattern.compile("\\b(if|for|while|case|catch)\\b");
     private static final Set<String> NON_METHOD_KEYWORDS = Set.of(
             "if", "for", "while", "switch", "catch", "return", "throw", "new", "else", "do", "case", "try",
             "class", "interface", "enum", "record"
@@ -54,7 +55,11 @@ public class ObjectOrientedAnalysisService {
     }
 
     public synchronized ObjectOrientedAnalysisResult analyzeProject(String projectId) throws IOException {
-        List<UploadedFileInfo> uploadedFiles = uploadService.listFiles(projectId);
+        return analyzeProject(projectId, null);
+    }
+
+    public synchronized ObjectOrientedAnalysisResult analyzeProject(String projectId, AnalysisScopeRequest request) throws IOException {
+        List<UploadedFileInfo> uploadedFiles = resolveTargetFiles(projectId, request);
         List<RawClassMetric> rawMetrics = new ArrayList<>();
         for (UploadedFileInfo uploadedFile : uploadedFiles) {
             Path storedPath = fileStorageService.uploadsDirectory(projectId).resolve(uploadedFile.storedName());
@@ -87,6 +92,7 @@ public class ObjectOrientedAnalysisService {
                             metric.sourceUploadName(),
                             metric.type(),
                             metric.cbo(),
+                            metric.rfc(),
                             dit,
                             noc,
                             metric.fieldCount(),
@@ -94,7 +100,7 @@ public class ObjectOrientedAnalysisService {
                             metric.classSize(),
                             metric.wmc(),
                             metric.lcom(),
-                            riskLevel(metric.cbo(), dit, metric.wmc(), metric.lcom())
+                            riskLevel(metric.cbo(), metric.rfc(), dit, metric.wmc(), metric.lcom())
                     );
                 })
                 .sorted(Comparator.comparing(ClassMetric::riskLevel).reversed()
@@ -118,7 +124,11 @@ public class ObjectOrientedAnalysisService {
         if (!fileStorageService.exists(latestPath)) {
             return null;
         }
-        return fileStorageService.readJson(latestPath, ObjectOrientedAnalysisResult.class);
+        try {
+            return fileStorageService.readJson(latestPath, ObjectOrientedAnalysisResult.class);
+        } catch (IOException exception) {
+            return null;
+        }
     }
 
     public ObjectOrientedReportResult exportMarkdownReport(String projectId) throws IOException {
@@ -136,8 +146,30 @@ public class ObjectOrientedAnalysisService {
     }
 
     private List<RawClassMetric> analyzeJavaFile(Path filePath, String fileName, String sourceUploadName) throws IOException {
-        List<String> lines = Files.readAllLines(filePath, StandardCharsets.UTF_8);
-        return analyzeJavaLines(fileName, sourceUploadName, lines);
+        String source = Files.readString(filePath, StandardCharsets.UTF_8);
+        return analyzeJavaSource(fileName, sourceUploadName, source);
+    }
+
+    private List<UploadedFileInfo> resolveTargetFiles(String projectId, AnalysisScopeRequest request) throws IOException {
+        List<UploadedFileInfo> uploadedFiles = uploadService.listFiles(projectId);
+        List<String> fileIds = request == null ? List.of() : request.fileIds();
+        if (fileIds == null || fileIds.isEmpty()) {
+            return uploadedFiles;
+        }
+        Set<String> selectedIds = Set.copyOf(fileIds);
+        List<UploadedFileInfo> selectedFiles = uploadedFiles.stream()
+                .filter(file -> selectedIds.contains(file.id()))
+                .toList();
+        if (selectedFiles.size() != selectedIds.size()) {
+            throw new IllegalArgumentException("所选文件中存在无效文件，请刷新项目文件列表后重试");
+        }
+        List<UploadedFileInfo> analyzableFiles = selectedFiles.stream()
+                .filter(file -> "java".equals(file.fileType()) || "zip".equals(file.fileType()))
+                .toList();
+        if (analyzableFiles.isEmpty()) {
+            throw new IllegalArgumentException("当前选择中没有可分析的 Java 文件，请选择 .java 或 .zip 文件");
+        }
+        return analyzableFiles;
     }
 
     private List<RawClassMetric> analyzeZipFile(Path zipPath, String sourceUploadName) throws IOException {
@@ -148,11 +180,61 @@ public class ObjectOrientedAnalysisService {
                 if (entry.isDirectory() || !ZipEntryFilter.isAnalyzableJava(entry.getName())) {
                     continue;
                 }
-                List<String> lines = List.of(new String(zipInputStream.readAllBytes(), StandardCharsets.UTF_8).split("\\R", -1));
-                metrics.addAll(analyzeJavaLines(entry.getName(), sourceUploadName, lines));
+                String source = new String(zipInputStream.readAllBytes(), StandardCharsets.UTF_8);
+                metrics.addAll(analyzeJavaSource(entry.getName(), sourceUploadName, source));
             }
         }
         return metrics;
+    }
+
+    private List<RawClassMetric> analyzeJavaSource(String fileName, String sourceUploadName, String source) {
+        JavaAstSupport.ParsedSource parsedSource = JavaAstSupport.parse(fileName, source);
+        if (parsedSource != null) {
+            List<RawClassMetric> astMetrics = analyzeWithAst(fileName, sourceUploadName, parsedSource);
+            if (!astMetrics.isEmpty()) {
+                return astMetrics;
+            }
+        }
+        List<String> lines = List.of(source.split("\\R", -1));
+        return analyzeJavaLines(fileName, sourceUploadName, lines);
+    }
+
+    private List<RawClassMetric> analyzeWithAst(String fileName, String sourceUploadName, JavaAstSupport.ParsedSource parsedSource) {
+        return parsedSource.types().stream()
+                .map(type -> {
+                    List<String> fieldNames = type.fields().stream()
+                            .map(JavaAstSupport.FieldInfo::name)
+                            .toList();
+                    int methodCount = type.methods().size();
+                    List<JavaAstSupport.MethodInfo> executableMethods = type.methods().stream()
+                            .filter(JavaAstSupport.MethodInfo::executable)
+                            .toList();
+                    int wmc = executableMethods.stream()
+                            .mapToInt(JavaAstSupport.MethodInfo::cyclomaticComplexity)
+                            .sum();
+                    if (wmc == 0) {
+                        wmc = methodCount;
+                    }
+                    int lcom = calculateLcomFromAst(fieldNames, type.methods());
+                    int cbo = calculateCboFromAst(type, fieldNames);
+                    int rfc = calculateRfcFromAst(type.methods());
+                    int classSize = Math.max(1, type.endLine() - type.startLine() + 1);
+                    return new RawClassMetric(
+                            type.name(),
+                            fileName,
+                            sourceUploadName,
+                            type.kind(),
+                            type.extendsName(),
+                            cbo,
+                            rfc,
+                            fieldNames.size(),
+                            methodCount,
+                            classSize,
+                            wmc,
+                            lcom
+                    );
+                })
+                .toList();
     }
 
     private List<RawClassMetric> analyzeJavaLines(String fileName, String sourceUploadName, List<String> lines) {
@@ -173,8 +255,9 @@ public class ObjectOrientedAnalysisService {
         if (wmc == 0) {
             wmc = methodCount;
         }
-        int lcom = calculateLcom(fieldNames, executableMethods, methodCount);
+        int lcom = calculateLcom(fieldNames, executableMethods);
         int cbo = calculateCbo(block, fieldNames);
+        int rfc = calculateRfc(lines);
         return new RawClassMetric(
                 block.name(),
                 fileName,
@@ -182,6 +265,7 @@ public class ObjectOrientedAnalysisService {
                 block.type(),
                 block.extendsName(),
                 cbo,
+                rfc,
                 fieldNames.size(),
                 methodCount,
                 lines.size(),
@@ -446,14 +530,65 @@ public class ObjectOrientedAnalysisService {
         return complexity;
     }
 
-    private int calculateLcom(List<String> fields, List<MethodBlock> methods, int methodCount) {
+    private int calculateLcom(List<String> fields, List<MethodBlock> methods) {
+        if (methods.size() <= 1) {
+            return 0;
+        }
+        List<Set<String>> references = new ArrayList<>();
+        for (MethodBlock method : methods) {
+            String body = String.join("\n", method.lines());
+            Set<String> methodFields = new HashSet<>();
+            for (String field : fields) {
+                if (body.matches("(?s).*\\b" + Pattern.quote(field) + "\\b.*")) {
+                    methodFields.add(field);
+                }
+            }
+            references.add(methodFields);
+        }
+        return computeLcomFromReferences(references);
+    }
+
+    private int calculateLcomFromAst(List<String> fields, List<JavaAstSupport.MethodInfo> methods) {
+        if (methods.size() <= 1) {
+            return 0;
+        }
+        List<Set<String>> references = new ArrayList<>();
+        for (JavaAstSupport.MethodInfo method : methods) {
+            Set<String> methodFields = new HashSet<>();
+            for (String reference : method.fieldReferences()) {
+                if (fields.contains(reference)) {
+                    methodFields.add(reference);
+                }
+            }
+            references.add(methodFields);
+        }
+        return computeLcomFromReferences(references);
+    }
+
+    private int computeLcomFromReferences(List<Set<String>> references) {
+        int p = 0;
+        int q = 0;
+        for (int i = 0; i < references.size(); i++) {
+            for (int j = i + 1; j < references.size(); j++) {
+                Set<String> intersection = new HashSet<>(references.get(i));
+                intersection.retainAll(references.get(j));
+                if (intersection.isEmpty()) {
+                    p++;
+                } else {
+                    q++;
+                }
+            }
+        }
+        return Math.max(p - q, 0);
+    }
+
+    private int calculateLcomFromAst(List<String> fields, List<JavaAstSupport.MethodInfo> methods, int methodCount) {
         if (methodCount <= 1 || fields.isEmpty() || methods.isEmpty()) {
             return 0;
         }
         int methodsTouchingFields = 0;
-        for (MethodBlock method : methods) {
-            String body = String.join("\n", method.lines());
-            boolean touchesField = fields.stream().anyMatch(field -> body.matches("(?s).*\\b" + Pattern.quote(field) + "\\b.*"));
+        for (JavaAstSupport.MethodInfo method : methods) {
+            boolean touchesField = method.fieldReferences().stream().anyMatch(fields::contains);
             if (touchesField) {
                 methodsTouchingFields++;
             }
@@ -473,7 +608,66 @@ public class ObjectOrientedAnalysisService {
             }
         }
         references.removeAll(fields);
+        references.remove(block.extendsName());
+        references.removeAll(block.implementsNames());
         return references.size();
+    }
+
+    private int calculateCboFromAst(JavaAstSupport.TypeInfo type, List<String> fields) {
+        Set<String> references = new HashSet<>(type.referencedTypes());
+        references.remove(type.name());
+        references.remove(type.extendsName());
+        references.removeAll(type.implementsNames());
+        references.removeAll(fields);
+        references.removeIf(reference -> reference == null
+                || reference.isBlank()
+                || COMMON_TYPES.contains(reference)
+                || Character.isLowerCase(reference.charAt(0)));
+        return references.size();
+    }
+
+    private int calculateRfcFromAst(List<JavaAstSupport.MethodInfo> methods) {
+        Set<String> responseSet = new HashSet<>();
+        for (JavaAstSupport.MethodInfo method : methods) {
+            responseSet.add(method.name());
+            responseSet.addAll(method.invokedMethods());
+        }
+        return responseSet.size();
+    }
+
+    private int calculateRfc(List<String> lines) {
+        Set<String> declaredMethods = new HashSet<>();
+        Set<String> invokedMethods = new HashSet<>();
+        Pattern invocationPattern = Pattern.compile("\\b([A-Za-z_$][A-Za-z0-9_$]*)\\s*\\(");
+        StringBuilder signature = new StringBuilder();
+        for (String line : lines) {
+            String codeLine = stripLineComment(line).trim();
+            if (codeLine.isBlank() || codeLine.startsWith("@")) {
+                continue;
+            }
+            signature.append(' ').append(codeLine);
+            Matcher invocationMatcher = invocationPattern.matcher(codeLine);
+            while (invocationMatcher.find()) {
+                String name = invocationMatcher.group(1);
+                if (!NON_METHOD_KEYWORDS.contains(name.toLowerCase())) {
+                    invokedMethods.add(name);
+                }
+            }
+            if (codeLine.contains(";") || codeLine.contains("{")) {
+                if (looksLikeMethodDeclaration(signature.toString())) {
+                    String normalized = signature.toString().replaceAll("\\s+", " ").trim();
+                    int leftParen = normalized.indexOf('(');
+                    if (leftParen > 0) {
+                        String beforeParen = normalized.substring(0, leftParen).trim();
+                        String[] tokens = beforeParen.split("\\s+");
+                        declaredMethods.add(tokens[tokens.length - 1].replaceAll("[^A-Za-z0-9_$]", ""));
+                    }
+                }
+                signature = new StringBuilder();
+            }
+        }
+        declaredMethods.addAll(invokedMethods);
+        return declaredMethods.size();
     }
 
     private int computeDit(RawClassMetric metric, Map<String, RawClassMetric> byName) {
@@ -505,19 +699,21 @@ public class ObjectOrientedAnalysisService {
         int methodCount = classes.stream().mapToInt(ClassMetric::noo).sum();
         int fieldCount = classes.stream().mapToInt(ClassMetric::noa).sum();
         int totalCbo = classes.stream().mapToInt(ClassMetric::cbo).sum();
+        int totalRfc = classes.stream().mapToInt(ClassMetric::rfc).sum();
         int maxDit = classes.stream().mapToInt(ClassMetric::dit).max().orElse(0);
         int highRiskClassCount = (int) classes.stream()
                 .filter(metric -> !"LOW".equals(metric.riskLevel()))
                 .count();
         double averageCbo = classes.isEmpty() ? 0 : Math.round(totalCbo * 100.0 / classes.size()) / 100.0;
-        return new ObjectOrientedSummary(fileCount, classCount, interfaceCount, methodCount, fieldCount, averageCbo, maxDit, highRiskClassCount);
+        double averageRfc = classes.isEmpty() ? 0 : Math.round(totalRfc * 100.0 / classes.size()) / 100.0;
+        return new ObjectOrientedSummary(fileCount, classCount, interfaceCount, methodCount, fieldCount, averageCbo, averageRfc, maxDit, highRiskClassCount);
     }
 
-    private String riskLevel(int cbo, int dit, int wmc, int lcom) {
-        if (cbo >= 15 || dit >= 5 || wmc >= 40 || lcom >= 20) {
+    private String riskLevel(int cbo, int rfc, int dit, int wmc, int lcom) {
+        if (cbo >= 15 || rfc >= 20 || dit >= 5 || wmc >= 40 || lcom >= 20) {
             return "HIGH";
         }
-        if (cbo >= 8 || dit >= 3 || wmc >= 20 || lcom >= 10) {
+        if (cbo >= 8 || rfc >= 10 || dit >= 3 || wmc >= 20 || lcom >= 10) {
             return "MEDIUM";
         }
         return "LOW";
@@ -602,17 +798,19 @@ public class ObjectOrientedAnalysisService {
         builder.append("| 方法数量 NOO | ").append(result.summary().methodCount()).append(" |\n");
         builder.append("| 属性数量 NOA | ").append(result.summary().fieldCount()).append(" |\n");
         builder.append("| 平均 CBO | ").append(result.summary().averageCbo()).append(" |\n");
+        builder.append("| 平均 RFC | ").append(result.summary().averageRfc()).append(" |\n");
         builder.append("| 最大 DIT | ").append(result.summary().maxDit()).append(" |\n");
         builder.append("| 风险类数量 | ").append(result.summary().highRiskClassCount()).append(" |\n\n");
         builder.append("## 类级明细\n\n");
-        builder.append("| 类/接口 | 类型 | 文件 | CBO | DIT | NOC | NOA | NOO | CS | WMC | LCOM | 风险 |\n");
-        builder.append("| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n");
+        builder.append("| 类/接口 | 类型 | 文件 | CBO | RFC | DIT | NOC | NOA | NOO | CS | WMC | LCOM | 风险 |\n");
+        builder.append("| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n");
         for (ClassMetric metric : result.classes()) {
             builder.append("| ")
                     .append(metric.className()).append(" | ")
                     .append(metric.type()).append(" | ")
                     .append(metric.fileName()).append(" | ")
                     .append(metric.cbo()).append(" | ")
+                    .append(metric.rfc()).append(" | ")
                     .append(metric.dit()).append(" | ")
                     .append(metric.noc()).append(" | ")
                     .append(metric.noa()).append(" | ")
@@ -633,7 +831,7 @@ public class ObjectOrientedAnalysisService {
     }
 
     private record RawClassMetric(String className, String fileName, String sourceUploadName, String type,
-                                  String extendsName, int cbo, int fieldCount, int methodCount, int classSize,
+                                  String extendsName, int cbo, int rfc, int fieldCount, int methodCount, int classSize,
                                   int wmc, int lcom) {
     }
 

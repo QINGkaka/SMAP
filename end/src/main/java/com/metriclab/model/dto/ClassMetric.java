@@ -6,6 +6,7 @@ public record ClassMetric(
         String sourceUploadName,
         String type,
         int cbo,
+        int rfc,
         int dit,
         int noc,
         int noa,

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<umlModel xmlns:xmi="http://www.omg.org/XMI">
+  <packagedElement xmi:type="uml:Class" xmi:id="xml-person" name="Person">
+    <ownedAttribute name="id" />
+    <ownedAttribute name="name" />
+    <ownedOperation name="rename" />
+    <ownedOperation name="displayLabel" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="xml-student" name="Student">
+    <ownedAttribute name="credits" />
+    <ownedAttribute name="warningCount" />
+    <ownedAttribute name="advisor" />
+    <ownedOperation name="addCredits" />
+    <ownedOperation name="markWarning" />
+    <ownedOperation name="isAtRisk" />
+    <ownedOperation name="assignAdvisor" />
+    <generalization general="xml-person" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="xml-graduate" name="GraduateStudent">
+    <ownedAttribute name="thesisTopic" />
+    <ownedAttribute name="publishedPapers" />
+    <ownedAttribute name="defensePassed" />
+    <ownedOperation name="updateTopic" />
+    <ownedOperation name="publishPaper" />
+    <ownedOperation name="canGraduate" />
+    <ownedOperation name="approveDefense" />
+    <generalization general="xml-student" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="xml-advisor" name="Advisor">
+    <ownedAttribute name="name" />
+    <ownedAttribute name="adviseeCount" />
+    <ownedOperation name="notifyStudent" />
+    <ownedOperation name="acceptStudent" />
+    <ownedOperation name="currentLoad" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Interface" xmi:id="xml-score" name="ScoreStrategy">
+    <ownedOperation name="normalize" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" xmi:id="xml-enrollment" name="EnrollmentService">
+    <ownedAttribute name="course" />
+    <ownedAttribute name="advisor" />
+    <ownedAttribute name="scoreStrategy" />
+    <ownedOperation name="enroll" />
+    <ownedOperation name="review" />
+    <ownedOperation name="determineRisk" />
+    <ownedOperation name="calculateAverage" />
+  </packagedElement>
+</umlModel>

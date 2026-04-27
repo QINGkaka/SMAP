@@ -68,9 +68,12 @@ export async function fetchProjectFiles(projectId) {
   return request(`/projects/${projectId}/files`)
 }
 
-export async function uploadProjectFile(projectId, file) {
+export async function uploadProjectFile(projectId, files) {
   const formData = new FormData()
-  formData.append('file', file)
+  const normalizedFiles = Array.isArray(files) ? files : [files]
+  normalizedFiles
+    .filter(Boolean)
+    .forEach(file => formData.append('file', file))
   return request(`/projects/${projectId}/files`, {
     method: 'POST',
     body: formData
@@ -97,9 +100,10 @@ export async function exportLocReport(projectId) {
   return request(`/projects/${projectId}/loc/report`)
 }
 
-export async function analyzeProjectComplexity(projectId) {
+export async function analyzeProjectComplexity(projectId, payload) {
   return request(`/projects/${projectId}/complexity/analyze`, {
-    method: 'POST'
+    method: 'POST',
+    body: JSON.stringify(payload || {})
   })
 }
 
@@ -111,9 +115,10 @@ export async function exportComplexityReport(projectId) {
   return request(`/projects/${projectId}/complexity/report`)
 }
 
-export async function analyzeProjectOo(projectId) {
+export async function analyzeProjectOo(projectId, payload) {
   return request(`/projects/${projectId}/oo/analyze`, {
-    method: 'POST'
+    method: 'POST',
+    body: JSON.stringify(payload || {})
   })
 }
 
@@ -188,9 +193,10 @@ export async function exportUseCasePointReport(projectId) {
   return request(`/projects/${projectId}/use-case-point/report`)
 }
 
-export async function analyzeProjectModel(projectId) {
+export async function analyzeProjectModel(projectId, payload) {
   return request(`/projects/${projectId}/model-analysis/analyze`, {
-    method: 'POST'
+    method: 'POST',
+    body: JSON.stringify(payload || {})
   })
 }
 

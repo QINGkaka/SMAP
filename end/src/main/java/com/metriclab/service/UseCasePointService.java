@@ -18,8 +18,10 @@ import java.util.UUID;
 @Service
 public class UseCasePointService {
 
-    private static final double DEFAULT_PRODUCTIVITY_HOURS = 20.0;
+    private static final double DEFAULT_PRODUCTIVITY_HOURS = 28.0;
     private static final double HOURS_PER_PERSON_MONTH = 160.0;
+    private static final double[] TECHNICAL_WEIGHTS = {2, 1, 1, 1, 1, 0.5, 0.5, 2, 1, 1, 1, 1, 1};
+    private static final double[] ENVIRONMENTAL_WEIGHTS = {1.5, 0.5, 1, 0.5, 1, 2, -1, -1};
 
     private final FileStorageService fileStorageService;
     private final UploadService uploadService;
@@ -39,8 +41,8 @@ public class UseCasePointService {
                 + nonNegative(safeRequest.averageUseCases()) * 10
                 + nonNegative(safeRequest.complexUseCases()) * 15;
         int uucp = actorWeight + useCaseWeight;
-        int technicalTotal = resolveTotal(safeRequest.technicalFactors(), safeRequest.technicalFactorTotal(), 30, 65);
-        int environmentalTotal = resolveTotal(safeRequest.environmentalFactors(), safeRequest.environmentalFactorTotal(), 20, 40);
+        double technicalTotal = resolveWeightedTotal(safeRequest.technicalFactors(), safeRequest.technicalFactorTotal(), TECHNICAL_WEIGHTS, 30.0);
+        double environmentalTotal = resolveWeightedTotal(safeRequest.environmentalFactors(), safeRequest.environmentalFactorTotal(), ENVIRONMENTAL_WEIGHTS, 20.0);
         double tcf = round2(0.6 + 0.01 * technicalTotal);
         double ecf = round2(1.4 - 0.03 * environmentalTotal);
         double ucp = round2(uucp * tcf * ecf);
@@ -56,9 +58,9 @@ public class UseCasePointService {
                 actorWeight,
                 useCaseWeight,
                 uucp,
-                technicalTotal,
+                round2(technicalTotal),
                 tcf,
-                environmentalTotal,
+                round2(environmentalTotal),
                 ecf,
                 ucp,
                 productivity,
@@ -95,7 +97,7 @@ public class UseCasePointService {
     }
 
     private UseCasePointRequest defaultRequest() {
-        return new UseCasePointRequest(1, 1, 0, 2, 1, 0, 30, 20, DEFAULT_PRODUCTIVITY_HOURS, List.of(), List.of());
+        return new UseCasePointRequest(1, 1, 0, 2, 1, 0, 30.0, 20.0, DEFAULT_PRODUCTIVITY_HOURS, List.of(), List.of());
     }
 
     private int nonNegative(int value) {
@@ -106,11 +108,15 @@ public class UseCasePointService {
         return Math.min(Math.max(value, min), max);
     }
 
-    private int resolveTotal(List<Integer> values, Integer fallback, int defaultValue, int max) {
+    private double resolveWeightedTotal(List<Integer> values, Number fallback, double[] weights, double defaultValue) {
         if (values != null && !values.isEmpty()) {
-            return clamp(values.stream().mapToInt(value -> clamp(value == null ? 0 : value, 0, 5)).sum(), 0, max);
+            double total = 0;
+            for (int index = 0; index < Math.min(values.size(), weights.length); index++) {
+                total += clamp(values.get(index) == null ? 0 : values.get(index), 0, 5) * weights[index];
+            }
+            return total;
         }
-        return clamp(fallback == null ? defaultValue : fallback, 0, max);
+        return fallback == null ? defaultValue : fallback.doubleValue();
     }
 
     private double normalizePositive(Double value, double defaultValue) {
@@ -143,7 +149,9 @@ public class UseCasePointService {
         builder.append("| 参与者权重 UAW | ").append(result.actorWeight()).append(" |\n");
         builder.append("| 用例权重 UUCW | ").append(result.useCaseWeight()).append(" |\n");
         builder.append("| 未调整用例点 UUCP | ").append(result.unadjustedUseCasePoints()).append(" |\n");
+        builder.append("| 技术因子加权总分 TFactor | ").append(result.technicalFactorTotal()).append(" |\n");
         builder.append("| 技术复杂度因子 TCF | ").append(result.technicalComplexityFactor()).append(" |\n");
+        builder.append("| 环境因子加权总分 EFactor | ").append(result.environmentalFactorTotal()).append(" |\n");
         builder.append("| 环境复杂度因子 ECF | ").append(result.environmentalComplexityFactor()).append(" |\n");
         builder.append("| 用例点 UCP | ").append(result.useCasePoints()).append(" |\n");
         builder.append("| 生产率 | ").append(result.productivityHoursPerUseCasePoint()).append(" 小时/用例点 |\n");

@@ -8,6 +8,12 @@ public record FunctionPointRequest(
         FunctionPointCount externalInquiries,
         FunctionPointCount internalLogicalFiles,
         FunctionPointCount externalInterfaceFiles,
+        String countMode,
+        List<FunctionPointDetailRequest> externalInputDetails,
+        List<FunctionPointDetailRequest> externalOutputDetails,
+        List<FunctionPointDetailRequest> externalInquiryDetails,
+        List<FunctionPointDetailRequest> internalLogicalFileDetails,
+        List<FunctionPointDetailRequest> externalInterfaceFileDetails,
         Integer generalSystemCharacteristicTotal,
         List<Integer> generalSystemCharacteristics
 ) {

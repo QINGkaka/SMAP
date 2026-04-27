@@ -1,12 +1,14 @@
 package com.metriclab.controller;
 
 import com.metriclab.common.ApiResponse;
+import com.metriclab.model.dto.AnalysisScopeRequest;
 import com.metriclab.model.dto.ComplexityAnalysisResult;
 import com.metriclab.model.dto.ComplexityReportResult;
 import com.metriclab.service.ComplexityAnalysisService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,8 +25,11 @@ public class ComplexityAnalysisController {
     }
 
     @PostMapping("/analyze")
-    public ApiResponse<ComplexityAnalysisResult> analyze(@PathVariable String projectId) throws IOException {
-        return ApiResponse.ok("圈复杂度分析完成", complexityAnalysisService.analyzeProject(projectId));
+    public ApiResponse<ComplexityAnalysisResult> analyze(
+            @PathVariable String projectId,
+            @RequestBody(required = false) AnalysisScopeRequest request
+    ) throws IOException {
+        return ApiResponse.ok("圈复杂度分析完成", complexityAnalysisService.analyzeProject(projectId, request));
     }
 
     @GetMapping("/latest")

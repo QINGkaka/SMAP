@@ -67,6 +67,24 @@ public class UploadService {
         return info;
     }
 
+    public synchronized List<UploadedFileInfo> uploadFiles(String projectId, List<MultipartFile> files) throws IOException {
+        ensureProjectExists(projectId);
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("上传文件不能为空");
+        }
+        List<UploadedFileInfo> uploaded = new ArrayList<>();
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+            uploaded.add(uploadFile(projectId, file));
+        }
+        if (uploaded.isEmpty()) {
+            throw new IllegalArgumentException("上传文件不能为空");
+        }
+        return uploaded;
+    }
+
     public synchronized void deleteFile(String projectId, String fileId) throws IOException {
         ensureProjectExists(projectId);
         UploadIndex index = readIndex(projectId);

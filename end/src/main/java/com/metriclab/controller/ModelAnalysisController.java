@@ -1,12 +1,14 @@
 package com.metriclab.controller;
 
 import com.metriclab.common.ApiResponse;
+import com.metriclab.model.dto.AnalysisScopeRequest;
 import com.metriclab.model.dto.ModelAnalysisReportResult;
 import com.metriclab.model.dto.ModelAnalysisResult;
 import com.metriclab.service.ModelAnalysisService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,8 +25,11 @@ public class ModelAnalysisController {
     }
 
     @PostMapping("/analyze")
-    public ApiResponse<ModelAnalysisResult> analyze(@PathVariable String projectId) throws IOException {
-        return ApiResponse.ok("模型文件度量完成", modelAnalysisService.analyzeProject(projectId));
+    public ApiResponse<ModelAnalysisResult> analyze(
+            @PathVariable String projectId,
+            @RequestBody(required = false) AnalysisScopeRequest request
+    ) throws IOException {
+        return ApiResponse.ok("模型文件度量完成", modelAnalysisService.analyzeProject(projectId, request));
     }
 
     @GetMapping("/latest")

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ObjectModel>
+  <Class id="oom-person" name="SimplePerson">
+    <Attribute name="id" />
+    <Attribute name="name" />
+    <Operation name="rename" />
+  </Class>
+  <Class id="oom-teacher" name="Teacher" parent="oom-person">
+    <Attribute name="title" />
+    <Operation name="assignCourse" />
+    <Operation name="reviewPlan" />
+  </Class>
+  <Class id="oom-project" name="Project">
+    <Attribute name="code" />
+    <Attribute name="budget" />
+    <Operation name="start" />
+    <Operation name="close" />
+  </Class>
+  <Interface id="oom-service" name="ProjectService">
+    <Operation name="approve" />
+  </Interface>
+</ObjectModel>

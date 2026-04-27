@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import ProjectFilePanel from './components/file/ProjectFilePanel.vue'
 import LocAnalysisView from './views/LocAnalysisView.vue'
 import ComplexityAnalysisView from './views/ComplexityAnalysisView.vue'
@@ -83,16 +83,21 @@ const thresholdMessage = ref('')
 const thresholdError = ref('')
 const thresholdExpanded = ref(false)
 const recentTaskLimit = 3
+const analysisScopeState = ref({
+  'control-flow': { mode: 'project', fileIds: [] },
+  'object-oriented': { mode: 'project', fileIds: [] },
+  'model-analysis': { mode: 'project', fileIds: [] }
+})
 const gscLabels = [
   '数据通信', '分布式数据处理', '性能', '重用性', '联机数据输入', '操作易用性', '联机更新',
   '复杂处理', '安装方便性', '运行方便性', '多站点部署', '变更便利性', '事务率', '最终用户效率'
 ]
 const technicalFactorLabels = [
-  '分布式系统', '响应/吞吐性能', '终端用户效率', '复杂内部处理', '代码复用性', '易安装性', '易用性',
-  '可移植性', '易修改性', '并发性', '安全特性', '第三方访问', '用户培训'
+  '分布式系统', '响应/吞吐量性能', '终端用户效率', '复杂的内部处理', '可重用性', '易安装性', '易用性',
+  '可移植性', '易更改性', '并发性', '特殊的安全性', '提供第三方接口', '特别的用户培训'
 ]
 const environmentalFactorLabels = [
-  '过程熟悉度', '应用经验', '面向对象经验', '主分析师能力', '团队积极性', '需求稳定性', '兼职人员', '困难语言'
+  '熟悉 UML 程度', '开发应用程序经验', '面向对象经验', '主分析师能力', '激励', '需求稳定', '兼职人员', '不同的编程语言'
 ]
 const {
   locResult,
@@ -162,21 +167,28 @@ const {
 } = useMetricModules({
   selectedProjectId,
   activeMenu,
-  downloadMarkdown
+  downloadMarkdown,
+  analysisScopePayloadFor
 })
 const {
   uploadedFiles,
-  selectedFile,
+  selectedFiles,
   projectFileMap,
   managementSelectedFiles,
   managementUploadLoading,
   managementMessage,
   managementError,
+  uploadLoading,
+  uploadMessage,
+  uploadError,
   loadAllProjectFiles,
   loadFilesForProject,
   loadProjectFiles,
+  handleFileChange,
   handleManagementFileChange,
+  submitUpload,
   submitManagementUpload,
+  removeUploadedFile,
   removeManagementFile,
   projectFiles,
   displayProjectFiles,
@@ -194,7 +206,7 @@ const {
   formatFileSize
 })
 
-const radarAxes = ['CBO', 'NOO', 'NOC', 'NOA', 'DIT', 'CS']
+const radarAxes = ['CBO', 'RFC', 'NOC', 'DIT', 'WMC', 'LCOM']
 const radarColors = ['blue', 'green', 'gold', 'red']
 
 async function loadHealth() {
@@ -399,6 +411,62 @@ function updateFunctionPointCount({ section, field, value }) {
   }
 }
 
+function updateFunctionPointMode(mode) {
+  functionPointForm.value = {
+    ...functionPointForm.value,
+    countMode: mode
+  }
+}
+
+function addFunctionPointDetail(section) {
+  const detailDefaults = {
+    externalInputDetails: { name: '', det: 0, ftr: 0, ret: null },
+    externalOutputDetails: { name: '', det: 0, ftr: 0, ret: null },
+    externalInquiryDetails: { name: '', det: 0, ftr: 0, ret: null },
+    internalLogicalFileDetails: { name: '', det: 0, ret: 0, ftr: null },
+    externalInterfaceFileDetails: { name: '', det: 0, ret: 0, ftr: null }
+  }
+  const next = [...(functionPointForm.value[section] || []), { ...detailDefaults[section] }]
+  functionPointForm.value = {
+    ...functionPointForm.value,
+    [section]: next
+  }
+}
+
+function removeFunctionPointDetail({ section, index }) {
+  const current = [...(functionPointForm.value[section] || [])]
+  if (current.length === 0) {
+    return
+  }
+  if (current.length <= 1) {
+    current[0] = {
+      ...current[0],
+      name: '',
+      det: 0,
+      ret: current[0]?.ret == null ? null : 0,
+      ftr: current[0]?.ftr == null ? null : 0
+    }
+  } else {
+    current.splice(index, 1)
+  }
+  functionPointForm.value = {
+    ...functionPointForm.value,
+    [section]: current
+  }
+}
+
+function updateFunctionPointDetail({ section, index, field, value }) {
+  const next = [...(functionPointForm.value[section] || [])]
+  next[index] = {
+    ...next[index],
+    [field]: value
+  }
+  functionPointForm.value = {
+    ...functionPointForm.value,
+    [section]: next
+  }
+}
+
 function updateFunctionPointGsc({ index, value }) {
   const next = [...functionPointForm.value.generalSystemCharacteristics]
   next[index] = value
@@ -510,6 +578,98 @@ function selectedProjectName() {
   return projects.value.find(project => project.id === selectedProjectId.value)?.name || '未选择项目'
 }
 
+function analysisScope(moduleKey) {
+  return analysisScopeState.value[moduleKey] || { mode: 'project', fileIds: [] }
+}
+
+function availableAnalysisFiles(moduleKey) {
+  const supportedTypes = {
+    'control-flow': ['java', 'zip'],
+    'object-oriented': ['java', 'zip'],
+    'model-analysis': ['xml', 'xmi', 'oom']
+  }
+  return uploadedFiles.value.filter(file => (supportedTypes[moduleKey] || []).includes(file.fileType))
+}
+
+function updateAnalysisScopeMode(moduleKey, mode) {
+  const nextMode = mode === 'selected' ? 'selected' : 'project'
+  analysisScopeState.value = {
+    ...analysisScopeState.value,
+    [moduleKey]: {
+      ...analysisScope(moduleKey),
+      mode: nextMode,
+      fileIds: nextMode === 'project' ? [] : analysisScope(moduleKey).fileIds
+    }
+  }
+}
+
+function toggleAnalysisFile(moduleKey, fileId) {
+  const current = analysisScope(moduleKey)
+  const fileIds = current.fileIds.includes(fileId)
+    ? current.fileIds.filter(id => id !== fileId)
+    : [...current.fileIds, fileId]
+  analysisScopeState.value = {
+    ...analysisScopeState.value,
+    [moduleKey]: {
+      ...current,
+      fileIds
+    }
+  }
+}
+
+function selectAllAnalysisFiles(moduleKey) {
+  analysisScopeState.value = {
+    ...analysisScopeState.value,
+    [moduleKey]: {
+      ...analysisScope(moduleKey),
+      mode: 'selected',
+      fileIds: availableAnalysisFiles(moduleKey).map(file => file.id)
+    }
+  }
+}
+
+function clearAnalysisFiles(moduleKey) {
+  analysisScopeState.value = {
+    ...analysisScopeState.value,
+    [moduleKey]: {
+      ...analysisScope(moduleKey),
+      fileIds: []
+    }
+  }
+}
+
+function analysisScopePayloadFor(moduleKey) {
+  const current = analysisScope(moduleKey)
+  if (current.mode !== 'selected') {
+    return {}
+  }
+  return {
+    fileIds: current.fileIds
+  }
+}
+
+function syncAnalysisScopeSelections() {
+  const availableIdMap = {
+    'control-flow': new Set(availableAnalysisFiles('control-flow').map(file => file.id)),
+    'object-oriented': new Set(availableAnalysisFiles('object-oriented').map(file => file.id)),
+    'model-analysis': new Set(availableAnalysisFiles('model-analysis').map(file => file.id))
+  }
+  const nextState = Object.fromEntries(
+    Object.entries(analysisScopeState.value).map(([moduleKey, state]) => [
+      moduleKey,
+      {
+        ...state,
+        fileIds: state.fileIds.filter(fileId => availableIdMap[moduleKey]?.has(fileId))
+      }
+    ])
+  )
+  analysisScopeState.value = nextState
+}
+
+watch([selectedProjectId, uploadedFiles], () => {
+  syncAnalysisScopeSelections()
+}, { deep: true })
+
 const currentProject = computed(() =>
   projects.value.find(project => project.id === selectedProjectId.value) || null
 )
@@ -554,18 +714,18 @@ function radarSeries() {
   }
   return ooResult.value.classes
     .slice()
-    .sort((left, right) => (right.cbo + right.wmc + right.lcom) - (left.cbo + left.wmc + left.lcom))
+    .sort((left, right) => (right.cbo + right.rfc + right.wmc + right.lcom) - (left.cbo + left.rfc + left.wmc + left.lcom))
     .slice(0, 4)
     .map((item, index) => ({
       name: item.className,
       color: radarColors[index % radarColors.length],
       points: radarPoints([
         normalizeRadar(item.cbo, 20),
-        normalizeRadar(item.noo, 30),
+        normalizeRadar(item.rfc, 30),
         normalizeRadar(item.noc, 10),
-        normalizeRadar(item.noa, 30),
         normalizeRadar(item.dit, 6),
-        normalizeRadar(item.cs, 220)
+        normalizeRadar(item.wmc, 40),
+        normalizeRadar(item.lcom, 20)
       ])
     }))
 }
@@ -888,7 +1048,7 @@ onMounted(async () => {
                 :current-page="currentFilePage(currentProject.id)"
                 :page-count="pageCount(currentProject.id)"
                 :show-upload-area="true"
-                :selected-file-name="managementSelectedFiles[currentProject.id]?.name || ''"
+                :selected-file-name="(managementSelectedFiles[currentProject.id] || []).map(file => file.name).join('、')"
                 :upload-loading="Boolean(managementUploadLoading[currentProject.id])"
                 upload-label="选择文件"
                 upload-button-text="上传到当前项目"
@@ -957,9 +1117,16 @@ onMounted(async () => {
                   :report-message="complexityReportMessage"
                   :error-message="complexityError"
                   :legacy-warning-message="isLegacyComplexityResult() ? '当前读取到的是旧版本复杂度结果，缺少文件扫描明细。请重启后端并重新点击“开始复杂度分析”。' : ''"
+                  :scope-mode="analysisScope('control-flow').mode"
+                  :selected-file-ids="analysisScope('control-flow').fileIds"
+                  :available-files="availableAnalysisFiles('control-flow')"
                   :format-risk-label="riskLabel"
                   @analyze="runComplexityAnalysis"
                   @export="exportComplexityMarkdown"
+                  @update:scope-mode="updateAnalysisScopeMode('control-flow', $event)"
+                  @toggle-file="toggleAnalysisFile('control-flow', $event)"
+                  @select-all-files="selectAllAnalysisFiles('control-flow')"
+                  @clear-selected-files="clearAnalysisFiles('control-flow')"
                 />
               </template>
 
@@ -975,7 +1142,11 @@ onMounted(async () => {
                   :gsc-total="functionPointGscTotal()"
                   @analyze="runFunctionPointAnalysis"
                   @export="exportFunctionPointMarkdown"
+                  @update-mode="updateFunctionPointMode"
                   @update-count="updateFunctionPointCount"
+                  @add-detail="addFunctionPointDetail"
+                  @remove-detail="removeFunctionPointDetail"
+                  @update-detail="updateFunctionPointDetail"
                   @update-gsc="updateFunctionPointGsc"
                 />
               </template>
@@ -1007,9 +1178,16 @@ onMounted(async () => {
                   :message="modelMessage"
                   :report-message="modelReportMessage"
                   :error-message="modelError"
+                  :scope-mode="analysisScope('model-analysis').mode"
+                  :selected-file-ids="analysisScope('model-analysis').fileIds"
+                  :available-files="availableAnalysisFiles('model-analysis')"
                   :format-risk-label="riskLabel"
                   @analyze="runModelAnalysis"
                   @export="exportModelMarkdown"
+                  @update:scope-mode="updateAnalysisScopeMode('model-analysis', $event)"
+                  @toggle-file="toggleAnalysisFile('model-analysis', $event)"
+                  @select-all-files="selectAllAnalysisFiles('model-analysis')"
+                  @clear-selected-files="clearAnalysisFiles('model-analysis')"
                 />
               </template>
 
@@ -1022,9 +1200,16 @@ onMounted(async () => {
                   :error-message="ooError"
                   :radar-axes="radarAxes"
                   :radar-series="radarSeries()"
+                  :scope-mode="analysisScope('object-oriented').mode"
+                  :selected-file-ids="analysisScope('object-oriented').fileIds"
+                  :available-files="availableAnalysisFiles('object-oriented')"
                   :format-risk-label="riskLabel"
                   @analyze="runOoAnalysis"
                   @export="exportOoMarkdown"
+                  @update:scope-mode="updateAnalysisScopeMode('object-oriented', $event)"
+                  @toggle-file="toggleAnalysisFile('object-oriented', $event)"
+                  @select-all-files="selectAllAnalysisFiles('object-oriented')"
+                  @clear-selected-files="clearAnalysisFiles('object-oriented')"
                 />
               </template>
 
@@ -1091,12 +1276,12 @@ onMounted(async () => {
                   :show-category-tabs="false"
                   :show-page-info="false"
                   :show-pagination="false"
-                  :selected-file-name="selectedFile?.name || ''"
+                  :selected-file-name="selectedFiles.map(file => file.name).join('、')"
                   :upload-loading="uploadLoading"
                   panel-title="文件"
-                  upload-label="上传"
-                  upload-hint="zip / java / oom / xml"
-                  upload-button-text="保存"
+                  upload-label="选择文件"
+                  upload-hint="支持一次上传多个 zip / java / oom / xml / xmi 文件"
+                  upload-button-text="批量保存"
                   item-class="upload-item"
                   empty-message="暂无上传文件"
                   :require-project-selection="true"

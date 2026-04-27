@@ -7,6 +7,7 @@ public record ObjectOrientedSummary(
         int methodCount,
         int fieldCount,
         double averageCbo,
+        double averageRfc,
         int maxDit,
         int highRiskClassCount
 ) {

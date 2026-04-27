@@ -37,7 +37,16 @@ function scoreTotal(values) {
   return values.reduce((total, value) => total + clampScore(value), 0)
 }
 
-export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdown }) {
+const useCaseTechnicalWeights = [2, 1, 1, 1, 1, 0.5, 0.5, 2, 1, 1, 1, 1, 1]
+const useCaseEnvironmentalWeights = [1.5, 0.5, 1, 0.5, 1, 2, -1, -1]
+
+function weightedScoreTotal(values, weights) {
+  return Math.round(values.reduce((total, value, index) => {
+    return total + clampScore(value) * (weights[index] || 0)
+  }, 0) * 100) / 100
+}
+
+export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdown, analysisScopePayloadFor }) {
   const locResult = ref(null)
   const locLoading = ref(false)
   const locError = ref('')
@@ -92,11 +101,17 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
   })
 
   const functionPointForm = ref({
+    countMode: 'DETAILED',
     externalInputs: { low: 1, average: 2, high: 0 },
     externalOutputs: { low: 1, average: 1, high: 0 },
     externalInquiries: { low: 1, average: 1, high: 0 },
     internalLogicalFiles: { low: 1, average: 0, high: 0 },
     externalInterfaceFiles: { low: 0, average: 1, high: 0 },
+    externalInputDetails: [{ name: '', det: 0, ftr: 0, ret: null }],
+    externalOutputDetails: [{ name: '', det: 0, ftr: 0, ret: null }],
+    externalInquiryDetails: [{ name: '', det: 0, ftr: 0, ret: null }],
+    internalLogicalFileDetails: [{ name: '', det: 0, ret: 0, ftr: null }],
+    externalInterfaceFileDetails: [{ name: '', det: 0, ret: 0, ftr: null }],
     generalSystemCharacteristicTotal: 35,
     generalSystemCharacteristics: [3, 2, 3, 2, 3, 3, 2, 3, 2, 3, 2, 3, 2, 2]
   })
@@ -110,7 +125,7 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
     complexUseCases: 0,
     technicalFactorTotal: 30,
     environmentalFactorTotal: 20,
-    productivityHoursPerUseCasePoint: 20,
+    productivityHoursPerUseCasePoint: 28,
     technicalFactors: [2, 3, 2, 3, 2, 2, 3, 2, 2, 2, 2, 2, 3],
     environmentalFactors: [3, 2, 2, 3, 3, 2, 2, 3]
   })
@@ -120,11 +135,11 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
   }
 
   function useCaseTechnicalTotal() {
-    return scoreTotal(useCasePointForm.value.technicalFactors)
+    return weightedScoreTotal(useCasePointForm.value.technicalFactors, useCaseTechnicalWeights)
   }
 
   function useCaseEnvironmentalTotal() {
-    return scoreTotal(useCasePointForm.value.environmentalFactors)
+    return weightedScoreTotal(useCasePointForm.value.environmentalFactors, useCaseEnvironmentalWeights)
   }
 
   const metricModules = {
@@ -150,7 +165,8 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
       analyze: analyzeProjectComplexity,
       report: exportComplexityReport,
       reportFileName: 'complexity-report.md',
-      successMessage: '圈复杂度分析完成，结果已保存到本地任务文件。'
+      successMessage: '圈复杂度分析完成，结果已保存到本地任务文件。',
+      payload: () => analysisScopePayloadFor?.('control-flow')
     },
     'object-oriented': {
       result: ooResult,
@@ -162,7 +178,8 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
       analyze: analyzeProjectOo,
       report: exportOoReport,
       reportFileName: 'object-oriented-report.md',
-      successMessage: '面向对象 CK/LK 度量完成，结果已保存到本地任务文件。'
+      successMessage: '面向对象 CK/LK 度量完成，结果已保存到本地任务文件。',
+      payload: () => analysisScopePayloadFor?.('object-oriented')
     },
     estimation: {
       result: estimationResult,
@@ -241,7 +258,8 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
       analyze: analyzeProjectModel,
       report: exportModelReport,
       reportFileName: 'model-analysis-report.md',
-      successMessage: '模型文件度量完成，结果已保存到本地任务文件。'
+      successMessage: '模型文件度量完成，结果已保存到本地任务文件。',
+      payload: () => analysisScopePayloadFor?.('model-analysis')
     }
   }
 

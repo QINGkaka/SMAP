@@ -189,6 +189,7 @@ function splitOf(groups) {
         <span>技术因子 TCF</span>
         <strong>{{ technicalTotal }} / 65</strong>
       </summary>
+      <p class="factor-hint">按课件权重自动计算 `TFactor = Σ(权重 × 打分)`，再求 `TCF = 0.6 + 0.01 × TFactor`。</p>
       <div class="factor-score-panel embedded">
         <div class="factor-score-grid">
           <label v-for="(label, index) in technicalLabels" :key="label">
@@ -210,6 +211,7 @@ function splitOf(groups) {
         <span>环境因子 ECF</span>
         <strong>{{ environmentalTotal }} / 40</strong>
       </summary>
+      <p class="factor-hint">按课件权重自动计算 `EFactor = Σ(权重 × 打分)`，再求 `ECF = 1.4 - 0.03 × EFactor`。</p>
       <div class="factor-score-panel embedded">
         <div class="factor-score-grid">
           <label v-for="(label, index) in environmentalLabels" :key="label">
@@ -303,6 +305,14 @@ function splitOf(groups) {
   min-height: 32px;
   padding: 0 12px;
   font-size: 12px;
+}
+
+.factor-hint {
+  margin: 0;
+  padding: 0 14px 12px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .ucp-overview-grid {

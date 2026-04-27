@@ -223,6 +223,7 @@ public class AiAnalysisService {
                         "classCount", oo.summary().classCount(),
                         "interfaceCount", oo.summary().interfaceCount(),
                         "averageCbo", oo.summary().averageCbo(),
+                        "averageRfc", oo.summary().averageRfc(),
                         "maxDit", oo.summary().maxDit(),
                         "highRiskClassCount", oo.summary().highRiskClassCount(),
                         "topClasses", topClasses(oo)
@@ -373,10 +374,13 @@ public class AiAnalysisService {
             risks.add("平均圈复杂度超过 10，说明整体控制流偏复杂，后续维护和测试成本可能上升。");
         }
         if (oo.summary().highRiskClassCount() > 0) {
-            risks.add("存在 " + oo.summary().highRiskClassCount() + " 个高风险类，需要关注耦合、继承深度、WMC 和 LCOM。");
+            risks.add("存在 " + oo.summary().highRiskClassCount() + " 个高风险类，需要关注耦合、RFC、继承深度、WMC 和 LCOM。");
         }
         if (oo.summary().averageCbo() > 10) {
             risks.add("平均 CBO 超过 10，类之间依赖较密集，变更影响面可能扩大。");
+        }
+        if (oo.summary().averageRfc() > 15) {
+            risks.add("平均 RFC 偏高，说明类的响应集合较大，测试和调试成本会增加。");
         }
         if (risks.isEmpty()) {
             risks.add("当前关键阈值未触发明显高风险项，项目结构整体处于可控状态。");
@@ -391,7 +395,7 @@ public class AiAnalysisService {
         ));
         topClasses(oo).forEach(item -> suggestions.add(
                 "检查类 `" + item.className() + "` 的职责边界，当前 CBO=" + item.cbo()
-                        + "、WMC=" + item.wmc() + "、LCOM=" + item.lcom() + "。"
+                        + "、RFC=" + item.rfc() + "、WMC=" + item.wmc() + "、LCOM=" + item.lcom() + "。"
         ));
         if (suggestions.isEmpty()) {
             suggestions.add("保持当前模块划分，后续可结合真实需求变更继续观察类规模、耦合和方法复杂度趋势。");
@@ -424,6 +428,7 @@ public class AiAnalysisService {
                 + (oo.summary().classCount() + oo.summary().interfaceCount()) + " 个类/接口。"
                 + " 平均圈复杂度为 " + complexity.summary().averageComplexity()
                 + "，平均 CBO 为 " + oo.summary().averageCbo()
+                + "，平均 RFC 为 " + oo.summary().averageRfc()
                 + "，基础 COCOMO 估算工作量为 " + estimation.effortPersonMonths() + " 人月。"
                 + " 当前主要关注点为：" + risks.get(0);
     }
@@ -455,6 +460,7 @@ public class AiAnalysisService {
         builder.append("| 平均圈复杂度 | ").append(complexity.summary().averageComplexity()).append(" |\n");
         builder.append("| 高风险方法数 | ").append(complexity.summary().highRiskMethodCount()).append(" |\n");
         builder.append("| 平均 CBO | ").append(oo.summary().averageCbo()).append(" |\n");
+        builder.append("| 平均 RFC | ").append(oo.summary().averageRfc()).append(" |\n");
         builder.append("| 高风险类数 | ").append(oo.summary().highRiskClassCount()).append(" |\n");
         builder.append("| 估算工作量 | ").append(estimation.effortPersonMonths()).append(" 人月 |\n\n");
         appendList(builder, "主要风险", risks);
@@ -481,14 +487,14 @@ public class AiAnalysisService {
 
     private List<ClassMetric> topClasses(ObjectOrientedAnalysisResult result) {
         return result.classes().stream()
-                .filter(item -> "HIGH".equals(item.riskLevel()) || item.cbo() > 10 || item.wmc() > 40 || item.lcom() > 20)
+                .filter(item -> "HIGH".equals(item.riskLevel()) || item.cbo() > 10 || item.rfc() > 20 || item.wmc() > 40 || item.lcom() > 20)
                 .sorted(Comparator.comparingInt(this::classRiskScore).reversed())
                 .limit(5)
                 .toList();
     }
 
     private int classRiskScore(ClassMetric item) {
-        return item.cbo() * 3 + item.wmc() + item.lcom() + item.dit() * 2;
+        return item.cbo() * 3 + item.rfc() + item.wmc() + item.lcom() + item.dit() * 2;
     }
 
     private List<String> limit(List<String> values, int size) {

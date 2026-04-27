@@ -31,11 +31,12 @@ public class UploadController {
     }
 
     @PostMapping
-    public ApiResponse<UploadedFileInfo> uploadFile(
+    public ApiResponse<List<UploadedFileInfo>> uploadFile(
             @PathVariable String projectId,
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") List<MultipartFile> files
     ) throws IOException {
-        return ApiResponse.ok("文件上传成功", uploadService.uploadFile(projectId, file));
+        List<UploadedFileInfo> uploadedFiles = uploadService.uploadFiles(projectId, files);
+        return ApiResponse.ok("文件上传成功", uploadedFiles);
     }
 
     @DeleteMapping("/{fileId}")

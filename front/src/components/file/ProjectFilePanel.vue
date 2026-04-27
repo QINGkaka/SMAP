@@ -144,6 +144,7 @@ function handlePageChange(page) {
           <input
             type="file"
             accept=".zip,.java,.oom,.xml,.xmi"
+            multiple
             hidden
             @change="handleFileChange"
           />

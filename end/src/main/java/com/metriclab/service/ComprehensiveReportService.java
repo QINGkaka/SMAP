@@ -143,6 +143,7 @@ public class ComprehensiveReportService {
         builder.append("| 方法数量 | ").append(oo.summary().methodCount()).append(" |\n");
         builder.append("| 字段数量 | ").append(oo.summary().fieldCount()).append(" |\n");
         builder.append("| 平均 CBO | ").append(oo.summary().averageCbo()).append(" |\n");
+        builder.append("| 平均 RFC | ").append(oo.summary().averageRfc()).append(" |\n");
         builder.append("| 最大 DIT | ").append(oo.summary().maxDit()).append(" |\n");
         builder.append("| 高风险类数 | ").append(oo.summary().highRiskClassCount()).append(" |\n\n");
         appendTopClasses(builder, oo.classes());
@@ -161,10 +162,23 @@ public class ComprehensiveReportService {
             builder.append("## 6. 功能点度量结果\n\n");
             builder.append("| 指标 | 数值 |\n");
             builder.append("| --- | ---: |\n");
+            builder.append("| 计数方式 | ").append("DETAILED".equalsIgnoreCase(functionPoint.countMode()) ? "详细计数" : "预估算").append(" |\n");
             builder.append("| 未调整功能点 UFP | ").append(functionPoint.unadjustedFunctionPoints()).append(" |\n");
             builder.append("| 通用系统特征总分 | ").append(functionPoint.generalSystemCharacteristicTotal()).append(" |\n");
             builder.append("| 调整因子 VAF | ").append(functionPoint.valueAdjustmentFactor()).append(" |\n");
             builder.append("| 调整后功能点 AFP | ").append(functionPoint.adjustedFunctionPoints()).append(" |\n\n");
+            if (functionPoint.componentSummaries() != null && !functionPoint.componentSummaries().isEmpty()) {
+                builder.append("| 类别 | 项数 | 低 | 中 | 高 | 功能点 |\n");
+                builder.append("| --- | ---: | ---: | ---: | ---: | ---: |\n");
+                functionPoint.componentSummaries().forEach(item -> builder.append("| ")
+                        .append(item.label()).append(" ").append(item.code()).append(" | ")
+                        .append(item.itemCount()).append(" | ")
+                        .append(item.lowCount()).append(" | ")
+                        .append(item.averageCount()).append(" | ")
+                        .append(item.highCount()).append(" | ")
+                        .append(item.functionPoints()).append(" |\n"));
+                builder.append("\n");
+            }
         }
 
         if (useCasePoint != null) {
@@ -174,6 +188,8 @@ public class ComprehensiveReportService {
             builder.append("| 参与者权重 UAW | ").append(useCasePoint.actorWeight()).append(" |\n");
             builder.append("| 用例权重 UUCW | ").append(useCasePoint.useCaseWeight()).append(" |\n");
             builder.append("| 未调整用例点 UUCP | ").append(useCasePoint.unadjustedUseCasePoints()).append(" |\n");
+            builder.append("| 技术因子加权总分 TFactor | ").append(useCasePoint.technicalFactorTotal()).append(" |\n");
+            builder.append("| 环境因子加权总分 EFactor | ").append(useCasePoint.environmentalFactorTotal()).append(" |\n");
             builder.append("| 用例点 UCP | ").append(useCasePoint.useCasePoints()).append(" |\n");
             builder.append("| 估算工时 | ").append(useCasePoint.estimatedHours()).append(" 小时 |\n");
             builder.append("| 估算人月 | ").append(useCasePoint.estimatedPersonMonths()).append(" 人月 |\n\n");
@@ -222,14 +238,15 @@ public class ComprehensiveReportService {
 
     private void appendTopClasses(StringBuilder builder, List<ClassMetric> classes) {
         builder.append("综合风险类 Top 5：\n\n");
-        builder.append("| 类 | CBO | DIT | WMC | LCOM | 风险 |\n");
-        builder.append("| --- | ---: | ---: | ---: | ---: | --- |\n");
+        builder.append("| 类 | CBO | RFC | DIT | WMC | LCOM | 风险 |\n");
+        builder.append("| --- | ---: | ---: | ---: | ---: | ---: | --- |\n");
         classes.stream()
                 .sorted(Comparator.comparingInt(this::classRiskScore).reversed())
                 .limit(5)
                 .forEach(item -> builder.append("| ")
                         .append(item.className()).append(" | ")
                         .append(item.cbo()).append(" | ")
+                        .append(item.rfc()).append(" | ")
                         .append(item.dit()).append(" | ")
                         .append(item.wmc()).append(" | ")
                         .append(item.lcom()).append(" | ")
@@ -263,7 +280,7 @@ public class ComprehensiveReportService {
     }
 
     private int classRiskScore(ClassMetric item) {
-        return item.cbo() * 3 + item.wmc() + item.lcom() + item.dit() * 2;
+        return item.cbo() * 3 + item.rfc() + item.wmc() + item.lcom() + item.dit() * 2;
     }
 
     private int modelClassRiskScore(ModelClassMetric item) {

@@ -1,5 +1,6 @@
 <script setup>
 import MetricActionHeader from '../components/metric/MetricActionHeader.vue'
+import MetricFileScopePanel from '../components/metric/MetricFileScopePanel.vue'
 import MetricStatusMessages from '../components/metric/MetricStatusMessages.vue'
 
 defineProps({
@@ -27,13 +28,32 @@ defineProps({
     type: String,
     default: ''
   },
+  scopeMode: {
+    type: String,
+    default: 'project'
+  },
+  availableFiles: {
+    type: Array,
+    default: () => []
+  },
+  selectedFileIds: {
+    type: Array,
+    default: () => []
+  },
   formatRiskLabel: {
     type: Function,
     required: true
   }
 })
 
-defineEmits(['analyze', 'export'])
+defineEmits([
+  'analyze',
+  'export',
+  'update:scopeMode',
+  'toggle-file',
+  'select-all-files',
+  'clear-selected-files'
+])
 
 function fileShortName(fileName) {
   if (!fileName) {
@@ -98,6 +118,16 @@ function scanStatusClass(status) {
       :success-messages="[message, reportMessage]"
       :error-message="errorMessage"
       :warning-messages="[legacyWarningMessage]"
+    />
+    <MetricFileScopePanel
+      :scope-mode="scopeMode"
+      :available-files="availableFiles"
+      :selected-file-ids="selectedFileIds"
+      supported-label=".java、.zip"
+      @update:scope-mode="$emit('update:scopeMode', $event)"
+      @toggle-file="$emit('toggle-file', $event)"
+      @select-all="$emit('select-all-files')"
+      @clear-selection="$emit('clear-selected-files')"
     />
 
     <div v-if="!result" class="empty-state loc-empty">暂无结果</div>

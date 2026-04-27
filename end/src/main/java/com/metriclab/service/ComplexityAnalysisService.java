@@ -1,5 +1,6 @@
 package com.metriclab.service;
 
+import com.metriclab.model.dto.AnalysisScopeRequest;
 import com.metriclab.model.dto.ComplexityAnalysisResult;
 import com.metriclab.model.dto.ComplexityFileMetric;
 import com.metriclab.model.dto.ComplexityReportResult;
@@ -28,7 +29,7 @@ import java.util.zip.ZipInputStream;
 @Service
 public class ComplexityAnalysisService {
 
-    private static final Pattern DECISION_KEYWORDS = Pattern.compile("\\b(if|for|while|case|catch|switch|do)\\b");
+    private static final Pattern DECISION_KEYWORDS = Pattern.compile("\\b(if|for|while|case|catch)\\b");
     private static final Set<String> NON_METHOD_KEYWORDS = Set.of(
             "if", "for", "while", "switch", "catch", "return", "throw", "new", "else", "do", "case", "try",
             "class", "interface", "enum", "record"
@@ -43,7 +44,11 @@ public class ComplexityAnalysisService {
     }
 
     public synchronized ComplexityAnalysisResult analyzeProject(String projectId) throws IOException {
-        List<UploadedFileInfo> uploadedFiles = uploadService.listFiles(projectId);
+        return analyzeProject(projectId, null);
+    }
+
+    public synchronized ComplexityAnalysisResult analyzeProject(String projectId, AnalysisScopeRequest request) throws IOException {
+        List<UploadedFileInfo> uploadedFiles = resolveTargetFiles(projectId, request);
         List<MethodComplexityMetric> methodMetrics = new ArrayList<>();
         List<ComplexityFileMetric> fileMetrics = new ArrayList<>();
         for (UploadedFileInfo uploadedFile : uploadedFiles) {
@@ -89,7 +94,11 @@ public class ComplexityAnalysisService {
         if (!fileStorageService.exists(latestPath)) {
             return null;
         }
-        return fileStorageService.readJson(latestPath, ComplexityAnalysisResult.class);
+        try {
+            return fileStorageService.readJson(latestPath, ComplexityAnalysisResult.class);
+        } catch (IOException exception) {
+            return null;
+        }
     }
 
     public ComplexityReportResult exportMarkdownReport(String projectId) throws IOException {
@@ -107,8 +116,30 @@ public class ComplexityAnalysisService {
     }
 
     private AnalysisUnit analyzeJavaFile(Path filePath, String fileName, String sourceUploadName) throws IOException {
-        List<String> lines = Files.readAllLines(filePath, StandardCharsets.UTF_8);
-        return analyzeJavaLines(fileName, sourceUploadName, lines);
+        String source = Files.readString(filePath, StandardCharsets.UTF_8);
+        return analyzeJavaSource(fileName, sourceUploadName, source);
+    }
+
+    private List<UploadedFileInfo> resolveTargetFiles(String projectId, AnalysisScopeRequest request) throws IOException {
+        List<UploadedFileInfo> uploadedFiles = uploadService.listFiles(projectId);
+        List<String> fileIds = request == null ? List.of() : request.fileIds();
+        if (fileIds == null || fileIds.isEmpty()) {
+            return uploadedFiles;
+        }
+        Set<String> selectedIds = Set.copyOf(fileIds);
+        List<UploadedFileInfo> selectedFiles = uploadedFiles.stream()
+                .filter(file -> selectedIds.contains(file.id()))
+                .toList();
+        if (selectedFiles.size() != selectedIds.size()) {
+            throw new IllegalArgumentException("所选文件中存在无效文件，请刷新项目文件列表后重试");
+        }
+        List<UploadedFileInfo> analyzableFiles = selectedFiles.stream()
+                .filter(file -> "java".equals(file.fileType()) || "zip".equals(file.fileType()))
+                .toList();
+        if (analyzableFiles.isEmpty()) {
+            throw new IllegalArgumentException("当前选择中没有可分析的 Java 文件，请选择 .java 或 .zip 文件");
+        }
+        return analyzableFiles;
     }
 
     private List<AnalysisUnit> analyzeZipFile(Path zipPath, String sourceUploadName) throws IOException {
@@ -119,11 +150,56 @@ public class ComplexityAnalysisService {
                 if (entry.isDirectory() || !ZipEntryFilter.isAnalyzableJava(entry.getName())) {
                     continue;
                 }
-                List<String> lines = List.of(new String(zipInputStream.readAllBytes(), StandardCharsets.UTF_8).split("\\R", -1));
-                units.add(analyzeJavaLines(entry.getName(), sourceUploadName, lines));
+                String source = new String(zipInputStream.readAllBytes(), StandardCharsets.UTF_8);
+                units.add(analyzeJavaSource(entry.getName(), sourceUploadName, source));
             }
         }
         return units;
+    }
+
+    private AnalysisUnit analyzeJavaSource(String fileName, String sourceUploadName, String source) {
+        JavaAstSupport.ParsedSource parsedSource = JavaAstSupport.parse(fileName, source);
+        if (parsedSource != null) {
+            AnalysisUnit astUnit = analyzeWithAst(fileName, sourceUploadName, parsedSource);
+            if (astUnit != null) {
+                return astUnit;
+            }
+        }
+        List<String> lines = List.of(source.split("\\R", -1));
+        return analyzeJavaLines(fileName, sourceUploadName, lines);
+    }
+
+    private AnalysisUnit analyzeWithAst(String fileName, String sourceUploadName, JavaAstSupport.ParsedSource parsedSource) {
+        int declaredMethodCount = parsedSource.types().stream()
+                .mapToInt(type -> type.methods().size())
+                .sum();
+        List<MethodComplexityMetric> methodMetrics = parsedSource.types().stream()
+                .flatMap(type -> type.methods().stream())
+                .filter(JavaAstSupport.MethodInfo::executable)
+                .map(method -> new MethodComplexityMetric(
+                        method.name(),
+                        fileName,
+                        sourceUploadName,
+                        method.startLine(),
+                        method.endLine(),
+                        method.cyclomaticComplexity(),
+                        riskLevel(method.cyclomaticComplexity())
+                ))
+                .toList();
+        if (declaredMethodCount == 0 && methodMetrics.isEmpty()) {
+            return null;
+        }
+        String status = methodMetrics.isEmpty()
+                ? "已基于 AST 扫描，未识别到带方法体的可执行方法，通常是接口或抽象声明"
+                : "已基于 AST 完成控制流复杂度分析";
+        ComplexityFileMetric fileMetric = new ComplexityFileMetric(
+                fileName,
+                sourceUploadName,
+                declaredMethodCount,
+                methodMetrics.size(),
+                status
+        );
+        return new AnalysisUnit(fileMetric, methodMetrics);
     }
 
     private AnalysisUnit analyzeJavaLines(String fileName, String sourceUploadName, List<String> lines) {

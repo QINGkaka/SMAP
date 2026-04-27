@@ -12,7 +12,7 @@ export function useProjectFiles({
   formatFileSize
 }) {
   const uploadedFiles = ref([])
-  const selectedFile = ref(null)
+  const selectedFiles = ref([])
   const projectFileMap = ref({})
   const managementSelectedFiles = ref({})
   const managementUploadLoading = ref({})
@@ -77,16 +77,16 @@ export function useProjectFiles({
   }
 
   function handleFileChange(event) {
-    selectedFile.value = event.target.files?.[0] || null
+    selectedFiles.value = Array.from(event.target.files || [])
     uploadMessage.value = ''
     uploadError.value = ''
   }
 
   function handleManagementFileChange(projectId, event) {
-    const file = event.target.files?.[0] || null
+    const files = Array.from(event.target.files || [])
     managementSelectedFiles.value = {
       ...managementSelectedFiles.value,
-      [projectId]: file
+      [projectId]: files
     }
     managementMessage.value = ''
     managementError.value = ''
@@ -99,15 +99,18 @@ export function useProjectFiles({
       uploadError.value = '请先选择项目'
       return
     }
-    if (!selectedFile.value) {
+    if (selectedFiles.value.length === 0) {
       uploadError.value = '请选择要上传的文件'
       return
     }
     uploadLoading.value = true
     try {
-      const result = await uploadProjectFile(selectedProjectId.value, selectedFile.value)
-      uploadMessage.value = `已上传：${result.data.originalName}`
-      selectedFile.value = null
+      const result = await uploadProjectFile(selectedProjectId.value, selectedFiles.value)
+      const names = result.data.map(file => file.originalName)
+      uploadMessage.value = names.length === 1
+        ? `已上传：${names[0]}`
+        : `已上传 ${names.length} 个文件：${names.join('、')}`
+      selectedFiles.value = []
       await loadProjectFiles()
       await loadFilesForProject(selectedProjectId.value)
       markMetricResultsStale('文件已更新，可按需重新执行当前度量。')
@@ -121,8 +124,8 @@ export function useProjectFiles({
   async function submitManagementUpload(project) {
     managementError.value = ''
     managementMessage.value = ''
-    const file = managementSelectedFiles.value[project.id]
-    if (!file) {
+    const files = managementSelectedFiles.value[project.id] || []
+    if (files.length === 0) {
       managementError.value = `请先为项目“${project.name}”选择文件`
       return
     }
@@ -131,11 +134,14 @@ export function useProjectFiles({
       [project.id]: true
     }
     try {
-      const result = await uploadProjectFile(project.id, file)
-      managementMessage.value = `已上传到“${project.name}”：${result.data.originalName}`
+      const result = await uploadProjectFile(project.id, files)
+      const names = result.data.map(file => file.originalName)
+      managementMessage.value = names.length === 1
+        ? `已上传到“${project.name}”：${names[0]}`
+        : `已上传到“${project.name}”共 ${names.length} 个文件`
       managementSelectedFiles.value = {
         ...managementSelectedFiles.value,
-        [project.id]: null
+        [project.id]: []
       }
       await loadFilesForProject(project.id)
       markMetricResultsStale('文件已更新，可按需重新执行当前度量。')
@@ -290,7 +296,7 @@ export function useProjectFiles({
 
   return {
     uploadedFiles,
-    selectedFile,
+    selectedFiles,
     projectFileMap,
     managementSelectedFiles,
     managementUploadLoading,

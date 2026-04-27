@@ -9,8 +9,8 @@ public record UseCasePointRequest(
         int simpleUseCases,
         int averageUseCases,
         int complexUseCases,
-        Integer technicalFactorTotal,
-        Integer environmentalFactorTotal,
+        Double technicalFactorTotal,
+        Double environmentalFactorTotal,
         Double productivityHoursPerUseCasePoint,
         List<Integer> technicalFactors,
         List<Integer> environmentalFactors
