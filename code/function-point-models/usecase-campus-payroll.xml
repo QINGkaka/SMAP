@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<useCaseModel name="Campus Payroll">
+  <actor name="Payroll Clerk" />
+  <actor name="Finance Manager" />
+  <actor name="Tax Platform" />
+  <useCase name="SubmitAttendanceAdjustment" fpType="EI" det="9" ftr="2" />
+  <useCase name="OvertimeDeclaration" fpType="EI" det="12" ftr="3" />
+  <useCase name="ApprovePayrollBatch" fpType="EO" det="26" ftr="4" />
+  <useCase name="QuerySalarySlip" fpType="EQ" det="7" ftr="2" />
+  <internalLogicalFile name="PayrollLedger" det="40" ret="3" />
+  <externalInterfaceFile name="TaxPlatformFeed" det="18" ret="1" />
+</useCaseModel>

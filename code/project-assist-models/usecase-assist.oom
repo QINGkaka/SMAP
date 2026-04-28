@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ObjectModel>
+  <Actor name="Student" />
+  <Actor name="Teacher" />
+  <Actor name="Admin" />
+  <Actor name="NotificationSystem" />
+  <UseCase name="CreateStudent" />
+  <UseCase name="AssignAdvisor" />
+  <UseCase name="ReviewWarning" />
+  <UseCase name="ExportRiskReport" />
+  <UseCase name="QueryStudent" />
+  <UseCase name="ApproveCourse" />
+</ObjectModel>

@@ -34,6 +34,16 @@ public class FunctionPointController {
         return ApiResponse.ok(functionPointService.latestResult(projectId));
     }
 
+    @GetMapping("/draft")
+    public ApiResponse<FunctionPointRequest> draft(@PathVariable String projectId) throws IOException {
+        return ApiResponse.ok(functionPointService.draftRequest(projectId));
+    }
+
+    @GetMapping("/assist")
+    public ApiResponse<FunctionPointRequest> assist(@PathVariable String projectId) throws IOException {
+        return ApiResponse.ok(functionPointService.assistRequest(projectId));
+    }
+
     @GetMapping("/report")
     public ApiResponse<FunctionPointReportResult> exportReport(@PathVariable String projectId) throws IOException {
         return ApiResponse.ok("功能点 Markdown 报告生成成功", functionPointService.exportMarkdownReport(projectId));

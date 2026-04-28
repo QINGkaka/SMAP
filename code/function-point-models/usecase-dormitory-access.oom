@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<useCaseModel name="Dormitory Access">
+  <actor name="Student" />
+  <actor name="Dorm Manager" />
+  <actor name="Campus Identity Platform" />
+  <useCase name="RegisterVisitorPass" fpType="EI" det="8" ftr="2" />
+  <useCase name="ReportDeviceException" fpType="EI" det="7" ftr="2" />
+  <useCase name="ExportEntryAnomalyReport" fpType="EO" det="25" ftr="4" />
+  <useCase name="NotifyNightReturnList" fpType="EO" det="16" ftr="4" />
+  <useCase name="QueryAccessTrace" fpType="EQ" det="11" ftr="2" />
+  <internalLogicalFile name="AccessControlRecord" det="39" ret="3" />
+  <externalInterfaceFile name="CampusIdentityFeed" det="19" ret="1" />
+</useCaseModel>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<useCaseModel name="Online Learning">
+  <actor name="Student" />
+  <actor name="Teacher" />
+  <actor name="Video Transcoding Service" />
+  <useCase name="SubmitQuizAnswer" fpType="EI" det="9" ftr="3" />
+  <useCase name="UploadCourseResource" fpType="EI" det="11" ftr="3" />
+  <useCase name="GenerateLearningAnalytics" fpType="EO" det="27" ftr="4" />
+  <useCase name="QueryPlaybackProgress" fpType="EQ" det="8" ftr="1" />
+  <useCase name="SearchCourseCatalog" fpType="EQ" det="12" ftr="2" />
+  <internalLogicalFile name="LearningRecord" det="46" ret="4" />
+  <externalInterfaceFile name="VideoTranscodingFeed" det="20" ret="1" />
+</useCaseModel>

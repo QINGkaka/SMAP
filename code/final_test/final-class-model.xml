@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<umlModel name="FinalClassModelXml">
+  <class name="StudentAggregate">
+    <ownedAttribute name="studentId" />
+    <ownedAttribute name="gpa" />
+    <ownedAttribute name="warningCount" />
+    <ownedOperation name="evaluateRisk" />
+    <ownedOperation name="applyScore" />
+    <generalization general="PersonAggregate" />
+  </class>
+  <class name="GraduateStudentAggregate">
+    <ownedAttribute name="thesisTitle" />
+    <ownedAttribute name="reviewScore" />
+    <ownedOperation name="approveDefense" />
+    <generalization general="StudentAggregate" />
+  </class>
+  <class name="CourseAggregate">
+    <ownedAttribute name="courseCode" />
+    <ownedAttribute name="credit" />
+    <ownedAttribute name="capacity" />
+    <ownedOperation name="canEnroll" />
+  </class>
+  <interface name="ScorePolicyPort">
+    <ownedOperation name="calculate" />
+  </interface>
+</umlModel>

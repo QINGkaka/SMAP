@@ -30,6 +30,13 @@ defineProps({
 })
 
 defineEmits(['analyze', 'export'])
+
+function ratio(value, total) {
+  if (!total) {
+    return 0
+  }
+  return Math.max(0, Math.min(100, Number(((value / total) * 100).toFixed(1))))
+}
 </script>
 
 <template>
@@ -69,6 +76,31 @@ defineEmits(['analyze', 'export'])
         <strong>{{ formatPercent(result.summary.commentRate) }}</strong>
       </article>
     </div>
+    <section class="visual-card">
+      <div class="visual-card-copy">
+        <h3>代码构成</h3>
+        <p>展示总行数中有效代码、注释和空行各自所占比例。</p>
+      </div>
+      <div class="composition-bar">
+        <span
+          class="composition-segment source"
+          :style="{ width: `${ratio(result.summary.sourceLines, result.summary.totalLines)}%` }"
+        ></span>
+        <span
+          class="composition-segment comment"
+          :style="{ width: `${ratio(result.summary.commentLines, result.summary.totalLines)}%` }"
+        ></span>
+        <span
+          class="composition-segment blank"
+          :style="{ width: `${ratio(result.summary.blankLines, result.summary.totalLines)}%` }"
+        ></span>
+      </div>
+      <div class="visual-legend">
+        <span><i class="source"></i>有效代码 {{ result.summary.sourceLines }}</span>
+        <span><i class="comment"></i>注释 {{ result.summary.commentLines }}</span>
+        <span><i class="blank"></i>空行 {{ result.summary.blankLines }}</span>
+      </div>
+    </section>
     <div class="loc-table-wrap">
       <table class="loc-table">
         <thead>

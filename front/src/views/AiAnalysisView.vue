@@ -44,9 +44,23 @@ defineEmits(['analyze', 'export'])
     :error-message="errorMessage"
   />
   <div v-if="!result" class="empty-state loc-empty">
-    暂无智能分析结果。点击“生成智能建议”后，系统会基于 LoC、圈复杂度、CK/LK 和估算结果生成质量评价。
+    暂无智能分析结果。
   </div>
   <div v-else class="ai-result">
+    <div class="loc-summary-grid">
+      <article>
+        <span>风险项</span>
+        <strong>{{ result.riskItems.length }}</strong>
+      </article>
+      <article>
+        <span>重构建议</span>
+        <strong>{{ result.refactoringSuggestions.length }}</strong>
+      </article>
+      <article>
+        <span>测试建议</span>
+        <strong>{{ result.testSuggestions.length }}</strong>
+      </article>
+    </div>
     <article class="analysis-card">
       <span>总体评价</span>
       <p>{{ result.overallAssessment }}</p>

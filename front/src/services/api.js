@@ -185,6 +185,14 @@ export async function fetchLatestFunctionPointResult(projectId) {
   return request(`/projects/${projectId}/function-point/latest`)
 }
 
+export async function fetchFunctionPointDraft(projectId) {
+  return request(`/projects/${projectId}/function-point/draft`)
+}
+
+export async function fetchFunctionPointAssist(projectId) {
+  return request(`/projects/${projectId}/function-point/assist`)
+}
+
 export async function exportFunctionPointReport(projectId) {
   return request(`/projects/${projectId}/function-point/report`)
 }
@@ -198,6 +206,14 @@ export async function analyzeProjectUseCasePoint(projectId, payload) {
 
 export async function fetchLatestUseCasePointResult(projectId) {
   return request(`/projects/${projectId}/use-case-point/latest`)
+}
+
+export async function fetchUseCasePointDraft(projectId) {
+  return request(`/projects/${projectId}/use-case-point/draft`)
+}
+
+export async function fetchUseCasePointAssist(projectId) {
+  return request(`/projects/${projectId}/use-case-point/assist`)
 }
 
 export async function exportUseCasePointReport(projectId) {

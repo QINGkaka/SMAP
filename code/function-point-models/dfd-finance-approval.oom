@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataFlowDiagram name="Finance Approval">
+  <process name="SubmitExpenseClaim" fpType="EI" det="14" ftr="3" />
+  <process name="UpdateBankAccount" fpType="EI" det="7" ftr="2" />
+  <process name="ExportVoucherLedger" fpType="EO" det="30" ftr="4" />
+  <process name="NotifyBudgetWarning" fpType="EO" det="10" ftr="4" />
+  <process name="QueryClaimStatus" fpType="EQ" det="6" ftr="1" />
+  <dataStore name="ExpenseClaimFile" fpType="ILF" det="48" ret="5" />
+  <dataStore name="ApprovalTrail" fpType="ILF" det="22" ret="2" />
+  <externalFile name="HRPayrollFeed" fpType="EIF" det="25" ret="1" />
+</dataFlowDiagram>

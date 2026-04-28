@@ -30,6 +30,22 @@ defineProps({
 })
 
 defineEmits(['analyze', 'export', 'update-form'])
+
+function estimateBars(result) {
+  if (!result) {
+    return []
+  }
+  const values = [
+    { label: '工作量', value: Number(result.effortPersonMonths || 0), tone: 'blue' },
+    { label: '周期', value: Number(result.developmentMonths || 0), tone: 'green' },
+    { label: '人员', value: Number(result.averageStaff || 0), tone: 'gold' }
+  ]
+  const max = Math.max(...values.map(item => item.value), 1)
+  return values.map(item => ({
+    ...item,
+    fill: `${Math.max(6, (item.value / max) * 100)}%`
+  }))
+}
 </script>
 
 <template>
@@ -106,6 +122,20 @@ defineEmits(['analyze', 'export', 'update-form'])
         <strong>{{ result.averageStaff }}</strong>
       </article>
     </div>
+    <section class="visual-card">
+      <div class="visual-card-copy">
+        <h3>资源轮廓</h3>
+        <p>环形填充按相对值显示工作量、周期和平均人员规模，用来快速比较三者的量级。</p>
+      </div>
+      <div class="radial-metric-grid">
+        <article v-for="item in estimateBars(result)" :key="item.label" class="radial-metric-card">
+          <div class="radial-meter" :style="{ '--fill': item.fill }" :class="item.tone">
+            <strong>{{ item.value }}</strong>
+          </div>
+          <span>{{ item.label }}</span>
+        </article>
+      </div>
+    </section>
     <div class="estimation-result-grid">
       <article>
         <span>项目模式</span>

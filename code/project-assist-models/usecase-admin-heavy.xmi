@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmlns:uml="http://www.omg.org/spec/UML/20131001">
+  <packagedElement xmi:type="uml:Actor" name="Admin" />
+  <packagedElement xmi:type="uml:Actor" name="Teacher" />
+  <packagedElement xmi:type="uml:Actor" name="NotificationSystem" />
+  <packagedElement xmi:type="uml:Actor" name="PlatformSystem" />
+  <packagedElement xmi:type="uml:UseCase" name="ManageUsers" />
+  <packagedElement xmi:type="uml:UseCase" name="AssignRole" />
+  <packagedElement xmi:type="uml:UseCase" name="ReviewAudit" />
+  <packagedElement xmi:type="uml:UseCase" name="ExportAuditReport" />
+  <packagedElement xmi:type="uml:UseCase" name="AnalyzeTrend" />
+  <packagedElement xmi:type="uml:UseCase" name="UpdateThreshold" />
+  <packagedElement xmi:type="uml:UseCase" name="Login" />
+</uml:Model>

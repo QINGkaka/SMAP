@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objectModel name="FinalClassModelOom">
+  <class name="ReviewWorkflowModel">
+    <attribute name="reviewerPool" />
+    <attribute name="topicCategory" />
+    <operation name="approve" />
+    <operation name="assignLoad" />
+  </class>
+  <class name="InternshipPlanModel">
+    <attribute name="studentId" />
+    <attribute name="company" />
+    <attribute name="weeklyLogs" />
+    <operation name="bindEnterprise" />
+    <operation name="isHealthy" />
+  </class>
+  <interface name="RiskPolicyPort">
+    <operation name="evaluate" />
+  </interface>
+</objectModel>

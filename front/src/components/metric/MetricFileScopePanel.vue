@@ -48,7 +48,6 @@ function fileSizeLabel(size) {
     <div class="scope-panel-header">
       <div>
         <h3>分析范围</h3>
-        <p>可对整个项目统一分析，也可只分析部分文件。</p>
       </div>
       <div class="scope-toggle">
         <button
@@ -71,13 +70,9 @@ function fileSizeLabel(size) {
     </div>
 
     <div class="scope-panel-body">
-      <p class="scope-helper">
-        支持文件类型：{{ supportedLabel || '当前模块支持的文件' }}
-      </p>
-
       <template v-if="scopeMode === 'selected'">
         <div class="scope-actions">
-          <span>已选 {{ selectedFileIds.length }} / {{ availableFiles.length }}</span>
+          <span>已选 {{ selectedFileIds.length }} / {{ availableFiles.length }} · {{ supportedLabel || '当前模块支持的文件' }}</span>
           <div>
             <button type="button" class="scope-action-link" @click="$emit('select-all')">全选</button>
             <button type="button" class="scope-action-link" @click="$emit('clear-selection')">清空</button>

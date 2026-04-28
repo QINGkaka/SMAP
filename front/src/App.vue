@@ -68,7 +68,6 @@ const xmlExportMessage = ref('')
 const xmlExportError = ref('')
 const comprehensiveReportMessage = ref('')
 const comprehensiveReportError = ref('')
-const clipboardMessage = ref('')
 function createEmptyProjectForm() {
   return {
     name: '',
@@ -550,16 +549,6 @@ function formatFileSize(size) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
 
-async function copyProjectId(projectId) {
-  clipboardMessage.value = ''
-  try {
-    await navigator.clipboard.writeText(projectId)
-    clipboardMessage.value = `已复制项目 ID：${projectId}`
-  } catch {
-    clipboardMessage.value = `项目 ID：${projectId}`
-  }
-}
-
 function downloadMarkdown(content, fileName) {
   downloadText(content, fileName, 'text/markdown;charset=utf-8')
 }
@@ -818,25 +807,21 @@ onMounted(async () => {
 
 <template>
   <div class="app-shell">
-    <header class="topbar" :class="{ 'topbar-minimal': activeMenu === 'control-flow' }">
+    <header class="topbar">
       <div class="topbar-left">
-        <div class="topbar-path">
-          <span>数据可视化</span>
-          <i>/</i>
-          <strong>{{ activeTitle() }}</strong>
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <span>SMAP</span>
         </div>
-        <small v-if="activeMenu !== 'control-flow'" class="topbar-caption">{{ activeDescription() }}</small>
+        <strong class="topbar-title">{{ activeTitle() }}</strong>
       </div>
-      <div v-if="activeMenu !== 'control-flow'" class="topbar-tools">
-        <button type="button" class="topbar-icon-button" aria-label="search">⌕</button>
-        <button type="button" class="topbar-icon-button" aria-label="language">文</button>
-        <button type="button" class="topbar-icon-button" aria-label="theme">☼</button>
+      <div class="topbar-tools">
+        <div class="topbar-project">
+          <span>{{ selectedProjectName() }}</span>
+        </div>
         <div class="status-pill" :class="{ offline: backendStatus !== 'UP' }">
           {{ backendStatus }}
         </div>
-        <small v-if="storageRoot" class="storage-note">{{ storageRoot }}</small>
-        <small v-else-if="healthError" class="storage-note error">{{ healthError }}</small>
-        <button type="button" class="topbar-avatar" aria-label="profile">SM</button>
       </div>
     </header>
 
@@ -847,12 +832,10 @@ onMounted(async () => {
             <span class="brand-mark"></span>
             <span>SMAP</span>
           </div>
-          <small>软件度量平台</small>
         </div>
         <div class="sidebar-intro">
-          <p>本地项目</p>
           <strong>{{ projects.length }} 个项目</strong>
-          <small>当前：{{ selectedProjectName() }}</small>
+          <span>{{ selectedProjectName() }}</span>
         </div>
         <div class="metric-menu">
           <section v-for="group in menuGroups" :key="group.title" class="menu-group">
@@ -878,32 +861,13 @@ onMounted(async () => {
       </aside>
 
       <section class="content-panel" :class="{ 'content-panel-compact': activeMenu === 'control-flow' }">
-        <div class="content-breadcrumb">
-          <span>仪表盘</span>
-          <i>/</i>
-          <span>{{ activeEyebrow() }}</span>
-          <i>/</i>
-          <strong>{{ activeTitle() }}</strong>
-        </div>
-        <div v-if="activeMenu !== 'control-flow'" class="section-header" :class="{ 'hero-card': activeMenu === 'function-point' }">
+        <div v-if="activeMenu === 'project-management'" class="section-header compact-header">
           <div class="section-header-copy">
-            <p class="eyebrow">{{ activeEyebrow() }}</p>
             <h1>{{ activeTitle() }}</h1>
-            <p class="section-description">{{ activeDescription() }}</p>
           </div>
-          <div class="section-header-meta">
-            <article class="header-meta-card">
-              <span>当前项目</span>
-              <strong>{{ selectedProjectName() }}</strong>
-            </article>
-            <article class="header-meta-card">
-              <span>累计文件</span>
-              <strong>{{ totalProjectFiles }}</strong>
-            </article>
-            <article class="header-meta-card">
-              <span>累计任务</span>
-              <strong>{{ totalProjectTasks }}</strong>
-            </article>
+          <div class="section-header-meta compact-meta">
+            <span>{{ totalProjectFiles }} 个文件</span>
+            <span>{{ totalProjectTasks }} 个任务</span>
           </div>
           <div class="header-actions">
             <button type="button" class="ghost-button" @click="importSampleProject">
@@ -921,7 +885,6 @@ onMounted(async () => {
             <section class="project-section">
               <div class="manager-header compact">
                 <div>
-                  <p class="eyebrow">项目表单</p>
                   <h2>{{ editingProjectId ? '编辑项目' : '新建项目' }}</h2>
                 </div>
               </div>
@@ -947,14 +910,11 @@ onMounted(async () => {
               </form>
               <p v-if="projectMessage" class="form-message success">{{ projectMessage }}</p>
               <p v-if="projectError" class="form-message error">{{ projectError }}</p>
-              <p v-if="clipboardMessage" class="form-message success">{{ clipboardMessage }}</p>
             </section>
 
             <section class="project-section project-list-section">
               <div class="project-list-header">
-                <div>
-                  <strong>项目切换</strong>
-                </div>
+                <strong>项目列表</strong>
                 <button type="button" class="text-button" @click="loadProjects">刷新</button>
               </div>
               <div v-if="projectLoading" class="empty-state">正在读取项目文件...</div>
@@ -967,14 +927,18 @@ onMounted(async () => {
                   :class="{ selected: selectedProjectId === project.id }"
                   @click="selectProject(project.id)"
                 >
-                  <div>
-                    <strong>{{ project.name }}</strong>
+                  <div class="project-item-copy">
+                    <div class="project-item-title-row">
+                      <strong>{{ project.name }}</strong>
+                      <span class="project-language-chip">{{ project.language }}</span>
+                    </div>
                     <small>{{ project.description || '暂无描述' }}</small>
-                    <code class="project-id">{{ project.id }}</code>
+                    <div class="project-item-metrics">
+                      <span>{{ projectFiles(project.id).length }} 个文件</span>
+                      <span>{{ projectTasks(project.id).length }} 个任务</span>
+                    </div>
                   </div>
-                  <div class="project-meta">
-                    <span>{{ project.language }}</span>
-                    <span>{{ formatDate(project.createdAt) }}</span>
+                  <div class="project-meta project-meta-actions">
                     <button type="button" class="mini-button" @click.stop="startEditProject(project)">编辑</button>
                   </div>
                 </article>
@@ -985,8 +949,8 @@ onMounted(async () => {
           <section class="project-manager">
             <div class="manager-header">
               <div>
-                <p class="eyebrow">文件与任务</p>
                 <h2>当前项目</h2>
+                <p class="manager-subhead">集中管理当前项目的文件、分析任务和基础信息。</p>
               </div>
               <button type="button" class="secondary-button" @click="loadProjects">刷新项目和文件</button>
             </div>
@@ -996,77 +960,100 @@ onMounted(async () => {
             <div v-else-if="!currentProject" class="empty-state">请选择一个项目，再查看文件和任务。</div>
             <article v-else class="project-detail-card current-project-card">
               <div class="detail-card-header">
-                <div>
-                  <strong>{{ currentProject.name }}</strong>
+                <div class="project-identity">
+                  <div class="project-identity-row">
+                    <strong>{{ currentProject.name }}</strong>
+                    <span class="project-language-chip">{{ currentProject.language }}</span>
+                  </div>
                   <small>{{ currentProject.description || '暂无描述' }}</small>
-                  <code class="project-id">{{ currentProject.id }}</code>
                 </div>
                 <div class="detail-actions">
                   <button type="button" class="mini-button" @click="startEditProject(currentProject)">编辑项目</button>
-                  <button type="button" class="mini-button" @click="copyProjectId(currentProject.id)">复制 ID</button>
                   <button type="button" class="mini-button danger" @click="removeProject(currentProject)">删除项目</button>
                 </div>
               </div>
 
               <div class="project-stats">
-                <article>
-                  <span>语言</span>
+                <article class="project-stat-card">
+                  <span class="project-stat-label">语言</span>
                   <strong>{{ currentProject.language }}</strong>
+                  <small>当前技术栈</small>
                 </article>
-                <article>
-                  <span>文件数</span>
+                <article class="project-stat-card">
+                  <span class="project-stat-label">文件数</span>
                   <strong>{{ projectFiles(currentProject.id).length }}</strong>
+                  <small>已入库文件</small>
                 </article>
-                <article>
-                  <span>任务数</span>
+                <article class="project-stat-card">
+                  <span class="project-stat-label">任务数</span>
                   <strong>{{ projectTasks(currentProject.id).length }}</strong>
+                  <small>历史分析记录</small>
                 </article>
               </div>
-
-              <div class="task-history-list">
-                <div class="task-history-header">
-                  <strong>历史度量任务</strong>
-                  <span>最近 {{ Math.min(projectTasks(currentProject.id).length, recentTaskLimit) }} 条</span>
-                </div>
-                <div v-if="projectTasks(currentProject.id).length === 0" class="empty-state compact">暂无历史任务</div>
-                <article v-for="task in projectTasks(currentProject.id).slice(0, recentTaskLimit)" :key="task.taskId" class="task-history-item">
-                  <div>
-                    <strong>{{ task.type }}</strong>
-                    <small>{{ task.taskId }}</small>
+              <div class="project-detail-grid">
+                <section class="project-column-card task-history-card">
+                  <div class="project-column-head">
+                    <div>
+                      <strong>历史度量任务</strong>
+                      <small>查看最近的分析记录与执行时间</small>
+                    </div>
+                    <span class="count-badge">最近 {{ Math.min(projectTasks(currentProject.id).length, recentTaskLimit) }} 条</span>
                   </div>
-                  <span>{{ task.status }} · {{ formatDate(task.createdAt) }}</span>
-                </article>
-              </div>
+                  <div class="task-history-list">
+                    <div v-if="projectTasks(currentProject.id).length === 0" class="empty-state compact">暂无历史任务</div>
+                    <article v-for="task in projectTasks(currentProject.id).slice(0, recentTaskLimit)" :key="task.taskId" class="task-history-item">
+                      <div class="task-history-copy">
+                        <div class="task-history-top">
+                          <strong>{{ task.type }}</strong>
+                          <span class="status-chip" :class="task.status === 'FINISHED' ? 'success' : 'neutral'">{{ task.status }}</span>
+                        </div>
+                        <small>{{ task.taskId }}</small>
+                      </div>
+                      <span>{{ formatDate(task.createdAt) }}</span>
+                    </article>
+                  </div>
+                </section>
 
-              <ProjectFilePanel
-                :project-id="currentProject.id"
-                :files="projectFiles(currentProject.id)"
-                :state="fileState(currentProject.id)"
-                :categories="fileCategories(currentProject.id)"
-                :paged-files="displayProjectFiles(currentProject.id)"
-                :filtered-count="filteredProjectFiles(currentProject.id).length"
-                :current-page="currentFilePage(currentProject.id)"
-                :page-count="pageCount(currentProject.id)"
-                :show-upload-area="true"
-                :selected-file-name="(managementSelectedFiles[currentProject.id] || []).map(file => file.name).join('、')"
-                :upload-loading="Boolean(managementUploadLoading[currentProject.id])"
-                upload-label="选择文件"
-                upload-button-text="上传到当前项目"
-                item-class="managed-file-item"
-                empty-message="当前项目暂无上传文件"
-                @file-change="handleManagementFileChange(currentProject.id, $event)"
-                @upload="submitManagementUpload(currentProject)"
-                @update-state="updateFileState(currentProject.id, $event)"
-                @change-page="changeFilePage(currentProject.id, $event)"
-                @remove-file="removeManagementFile(currentProject, $event)"
-              />
+                <section class="project-column-card project-files-card">
+                  <div class="project-column-head">
+                    <div>
+                      <strong>项目文件</strong>
+                      <small>上传、筛选并维护当前项目的输入文件</small>
+                    </div>
+                    <span class="count-badge">{{ projectFiles(currentProject.id).length }} 个</span>
+                  </div>
+                  <ProjectFilePanel
+                    :project-id="currentProject.id"
+                    :files="projectFiles(currentProject.id)"
+                    :state="fileState(currentProject.id)"
+                    :categories="fileCategories(currentProject.id)"
+                    :paged-files="displayProjectFiles(currentProject.id)"
+                    :filtered-count="filteredProjectFiles(currentProject.id).length"
+                    :current-page="currentFilePage(currentProject.id)"
+                    :page-count="pageCount(currentProject.id)"
+                    panel-title=""
+                    :show-upload-area="true"
+                    :selected-file-name="(managementSelectedFiles[currentProject.id] || []).map(file => file.name).join('、')"
+                    :selected-file-count="(managementSelectedFiles[currentProject.id] || []).length"
+                    :upload-loading="Boolean(managementUploadLoading[currentProject.id])"
+                    upload-label="选择文件"
+                    upload-button-text="上传到当前项目"
+                    item-class="managed-file-item"
+                    empty-message="当前项目暂无上传文件"
+                    @file-change="handleManagementFileChange(currentProject.id, $event)"
+                    @upload="submitManagementUpload(currentProject)"
+                    @update-state="updateFileState(currentProject.id, $event)"
+                    @change-page="changeFilePage(currentProject.id, $event)"
+                    @remove-file="removeManagementFile(currentProject, $event)"
+                  />
+                </section>
+              </div>
             </article>
           </section>
 
           <section class="project-section threshold-section">
             <div class="manager-header">
               <div>
-                <p class="eyebrow">风险阈值</p>
                 <h2>指标阈值配置</h2>
               </div>
               <div class="button-row">
@@ -1243,14 +1230,27 @@ onMounted(async () => {
             <aside class="operation-panel">
               <section class="operation-section operation-section-primary">
                 <div class="operation-panel-header" :class="{ 'operation-panel-header-compact': activeMenu === 'control-flow' }">
-                  <p class="eyebrow">分析准备</p>
                   <h2>{{ selectedProjectName() }}</h2>
-                  <small>
+                  <span class="operation-panel-meta">
                     {{ currentProject ? `${currentProject.language} · ${projectFiles(currentProject.id).length} 个文件` : '请先选择项目' }}
-                  </small>
+                  </span>
+                </div>
+                <div v-if="currentProject" class="operation-context-grid">
+                  <article>
+                    <span>文件</span>
+                    <strong>{{ projectFiles(currentProject.id).length }}</strong>
+                  </article>
+                  <article>
+                    <span>任务</span>
+                    <strong>{{ projectTasks(currentProject.id).length }}</strong>
+                  </article>
+                  <article>
+                    <span>语言</span>
+                    <strong>{{ currentProject.language }}</strong>
+                  </article>
                 </div>
                 <label class="panel-label">
-                  <span>当前项目</span>
+                  <span>项目</span>
                   <select v-model="selectedProjectId" @change="handleProjectSelectionChange">
                     <option value="">请选择项目</option>
                     <option v-for="project in projects" :key="project.id" :value="project.id">
@@ -1277,6 +1277,7 @@ onMounted(async () => {
                   :show-page-info="false"
                   :show-pagination="false"
                   :selected-file-name="selectedFiles.map(file => file.name).join('、')"
+                  :selected-file-count="selectedFiles.length"
                   :upload-loading="uploadLoading"
                   panel-title="文件"
                   upload-label="选择文件"
@@ -1296,10 +1297,10 @@ onMounted(async () => {
               <section class="operation-section operation-section-footer">
                 <div class="operation-actions">
                   <button type="button" class="secondary-button" @click="exportXml">
-                    XML
+                    导出 XML
                   </button>
                   <button type="button" class="secondary-button" @click="exportComprehensiveMarkdown">
-                    报告
+                    综合报告
                   </button>
                 </div>
                 <p v-if="xmlExportMessage" class="form-message success">{{ xmlExportMessage }}</p>

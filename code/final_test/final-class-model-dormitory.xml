@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<umlModel name="DormitoryDomainModel">
+  <class name="DormAccessAggregate">
+    <ownedAttribute name="studentId" />
+    <ownedAttribute name="gateId" />
+    <ownedAttribute name="entryTime" />
+    <ownedOperation name="registerEntry" />
+    <ownedOperation name="markAnomaly" />
+  </class>
+  <class name="VisitorPassAggregate">
+    <ownedAttribute name="visitorName" />
+    <ownedAttribute name="visitWindow" />
+    <ownedAttribute name="hostStudentId" />
+    <ownedOperation name="approvePass" />
+  </class>
+  <interface name="IdentityValidationPort">
+    <ownedOperation name="validateIdentity" />
+  </interface>
+</umlModel>

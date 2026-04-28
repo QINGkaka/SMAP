@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import {
   analyzeProjectAi,
   analyzeProjectComplexity,
@@ -18,11 +18,15 @@ import {
   fetchLatestAiResult,
   fetchLatestComplexityResult,
   fetchLatestEstimationResult,
+  fetchFunctionPointAssist,
+  fetchFunctionPointDraft,
   fetchLatestFunctionPointResult,
   fetchLatestLocResult,
   fetchLatestModelResult,
   fetchLatestOoResult,
-  fetchLatestUseCasePointResult
+  fetchUseCasePointAssist,
+  fetchLatestUseCasePointResult,
+  fetchUseCasePointDraft
 } from '../services/api'
 
 function clampScore(value) {
@@ -40,6 +44,52 @@ function scoreTotal(values) {
 const useCaseTechnicalWeights = [2, 1, 1, 1, 1, 0.5, 0.5, 2, 1, 1, 1, 1, 1]
 const useCaseEnvironmentalWeights = [1.5, 0.5, 1, 0.5, 1, 2, -1, -1]
 const uploadDependentMetricKeys = ['loc', 'control-flow', 'object-oriented', 'estimation', 'ai', 'model-analysis']
+
+function createDefaultEstimationForm() {
+  return {
+    mode: 'ORGANIC',
+    kloc: '',
+    costPerPersonMonth: 20000
+  }
+}
+
+function createDefaultFunctionPointForm() {
+  return {
+    countMode: 'DETAILED',
+    externalInputs: { low: 0, average: 0, high: 0 },
+    externalOutputs: { low: 0, average: 0, high: 0 },
+    externalInquiries: { low: 0, average: 0, high: 0 },
+    internalLogicalFiles: { low: 0, average: 0, high: 0 },
+    externalInterfaceFiles: { low: 0, average: 0, high: 0 },
+    externalInputDetails: [{ name: '', det: 0, ftr: 0, ret: null }],
+    externalOutputDetails: [{ name: '', det: 0, ftr: 0, ret: null }],
+    externalInquiryDetails: [{ name: '', det: 0, ftr: 0, ret: null }],
+    internalLogicalFileDetails: [{ name: '', det: 0, ret: 0, ftr: null }],
+    externalInterfaceFileDetails: [{ name: '', det: 0, ret: 0, ftr: null }],
+    generalSystemCharacteristicTotal: 35,
+    generalSystemCharacteristics: [3, 2, 3, 2, 3, 3, 2, 3, 2, 3, 2, 3, 2, 2]
+  }
+}
+
+function createDefaultUseCasePointForm() {
+  return {
+    simpleActors: 0,
+    averageActors: 0,
+    complexActors: 0,
+    simpleUseCases: 0,
+    averageUseCases: 0,
+    complexUseCases: 0,
+    technicalFactorTotal: 30,
+    environmentalFactorTotal: 20,
+    productivityHoursPerUseCasePoint: 28,
+    technicalFactors: [2, 3, 2, 3, 2, 2, 3, 2, 2, 2, 2, 2, 3],
+    environmentalFactors: [3, 2, 2, 3, 3, 2, 2, 3]
+  }
+}
+
+function cloneForm(value) {
+  return JSON.parse(JSON.stringify(value))
+}
 
 function weightedScoreTotal(values, weights) {
   return Math.round(values.reduce((total, value, index) => {
@@ -95,41 +145,14 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
   const modelMessage = ref('')
   const modelReportMessage = ref('')
 
-  const estimationForm = ref({
-    mode: 'ORGANIC',
-    kloc: '',
-    costPerPersonMonth: 20000
-  })
-
-  const functionPointForm = ref({
-    countMode: 'DETAILED',
-    externalInputs: { low: 1, average: 2, high: 0 },
-    externalOutputs: { low: 1, average: 1, high: 0 },
-    externalInquiries: { low: 1, average: 1, high: 0 },
-    internalLogicalFiles: { low: 1, average: 0, high: 0 },
-    externalInterfaceFiles: { low: 0, average: 1, high: 0 },
-    externalInputDetails: [{ name: '', det: 0, ftr: 0, ret: null }],
-    externalOutputDetails: [{ name: '', det: 0, ftr: 0, ret: null }],
-    externalInquiryDetails: [{ name: '', det: 0, ftr: 0, ret: null }],
-    internalLogicalFileDetails: [{ name: '', det: 0, ret: 0, ftr: null }],
-    externalInterfaceFileDetails: [{ name: '', det: 0, ret: 0, ftr: null }],
-    generalSystemCharacteristicTotal: 35,
-    generalSystemCharacteristics: [3, 2, 3, 2, 3, 3, 2, 3, 2, 3, 2, 3, 2, 2]
-  })
-
-  const useCasePointForm = ref({
-    simpleActors: 1,
-    averageActors: 1,
-    complexActors: 0,
-    simpleUseCases: 2,
-    averageUseCases: 1,
-    complexUseCases: 0,
-    technicalFactorTotal: 30,
-    environmentalFactorTotal: 20,
-    productivityHoursPerUseCasePoint: 28,
-    technicalFactors: [2, 3, 2, 3, 2, 2, 3, 2, 2, 2, 2, 2, 3],
-    environmentalFactors: [3, 2, 2, 3, 3, 2, 2, 3]
-  })
+  const estimationForm = ref(createDefaultEstimationForm())
+  const functionPointForm = ref(createDefaultFunctionPointForm())
+  const useCasePointForm = ref(createDefaultUseCasePointForm())
+  const estimationFormByProject = ref({})
+  const functionPointFormByProject = ref({})
+  const useCasePointFormByProject = ref({})
+  let functionPointDraftRequestToken = 0
+  let useCaseDraftRequestToken = 0
 
   function functionPointGscTotal() {
     return scoreTotal(functionPointForm.value.generalSystemCharacteristics)
@@ -141,6 +164,139 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
 
   function useCaseEnvironmentalTotal() {
     return weightedScoreTotal(useCasePointForm.value.environmentalFactors, useCaseEnvironmentalWeights)
+  }
+
+  function saveProjectScopedForms(projectId) {
+    if (!projectId) {
+      return
+    }
+    estimationFormByProject.value = {
+      ...estimationFormByProject.value,
+      [projectId]: cloneForm(estimationForm.value)
+    }
+    functionPointFormByProject.value = {
+      ...functionPointFormByProject.value,
+      [projectId]: cloneForm(functionPointForm.value)
+    }
+    useCasePointFormByProject.value = {
+      ...useCasePointFormByProject.value,
+      [projectId]: cloneForm(useCasePointForm.value)
+    }
+  }
+
+  function restoreProjectScopedForms(projectId) {
+    estimationForm.value = projectId && estimationFormByProject.value[projectId]
+      ? cloneForm(estimationFormByProject.value[projectId])
+      : createDefaultEstimationForm()
+    functionPointForm.value = createDefaultFunctionPointForm()
+    useCasePointForm.value = createDefaultUseCasePointForm()
+  }
+
+  async function hydrateFunctionPointForm(projectId) {
+    if (!projectId) {
+      functionPointForm.value = createDefaultFunctionPointForm()
+      return
+    }
+    if (functionPointFormByProject.value[projectId]) {
+      functionPointForm.value = cloneForm(functionPointFormByProject.value[projectId])
+      return
+    }
+    const requestToken = ++functionPointDraftRequestToken
+    try {
+      const result = await fetchFunctionPointDraft(projectId)
+      if (requestToken !== functionPointDraftRequestToken || selectedProjectId.value !== projectId) {
+        return
+      }
+      const nextForm = result?.data ? cloneForm(result.data) : createDefaultFunctionPointForm()
+      functionPointForm.value = nextForm
+      functionPointFormByProject.value = {
+        ...functionPointFormByProject.value,
+        [projectId]: cloneForm(nextForm)
+      }
+    } catch {
+      if (requestToken !== functionPointDraftRequestToken || selectedProjectId.value !== projectId) {
+        return
+      }
+      functionPointForm.value = createDefaultFunctionPointForm()
+    }
+  }
+
+  async function hydrateUseCasePointForm(projectId) {
+    if (!projectId) {
+      useCasePointForm.value = createDefaultUseCasePointForm()
+      return
+    }
+    if (useCasePointFormByProject.value[projectId]) {
+      useCasePointForm.value = cloneForm(useCasePointFormByProject.value[projectId])
+      return
+    }
+    const requestToken = ++useCaseDraftRequestToken
+    try {
+      const result = await fetchUseCasePointDraft(projectId)
+      if (requestToken !== useCaseDraftRequestToken || selectedProjectId.value !== projectId) {
+        return
+      }
+      const nextForm = result?.data ? cloneForm(result.data) : createDefaultUseCasePointForm()
+      useCasePointForm.value = nextForm
+      useCasePointFormByProject.value = {
+        ...useCasePointFormByProject.value,
+        [projectId]: cloneForm(nextForm)
+      }
+    } catch {
+      if (requestToken !== useCaseDraftRequestToken || selectedProjectId.value !== projectId) {
+        return
+      }
+      useCasePointForm.value = createDefaultUseCasePointForm()
+    }
+  }
+
+  watch(selectedProjectId, (newProjectId, oldProjectId) => {
+    saveProjectScopedForms(oldProjectId)
+    restoreProjectScopedForms(newProjectId)
+    hydrateFunctionPointForm(newProjectId)
+    hydrateUseCasePointForm(newProjectId)
+  })
+
+  async function loadFunctionPointAssist() {
+    if (!selectedProjectId.value) {
+      functionPointError.value = '请先选择项目'
+      return
+    }
+    functionPointError.value = ''
+    functionPointMessage.value = ''
+    try {
+      const result = await fetchFunctionPointAssist(selectedProjectId.value)
+      const nextForm = result?.data ? cloneForm(result.data) : createDefaultFunctionPointForm()
+      functionPointForm.value = nextForm
+      functionPointFormByProject.value = {
+        ...functionPointFormByProject.value,
+        [selectedProjectId.value]: cloneForm(nextForm)
+      }
+      functionPointMessage.value = '已按当前项目文件重新识别功能点明细，可直接计算或继续修正。'
+    } catch (error) {
+      functionPointError.value = error.message
+    }
+  }
+
+  async function loadUseCasePointAssist() {
+    if (!selectedProjectId.value) {
+      useCasePointError.value = '请先选择项目'
+      return
+    }
+    useCasePointError.value = ''
+    useCasePointMessage.value = ''
+    try {
+      const result = await fetchUseCasePointAssist(selectedProjectId.value)
+      const nextForm = result?.data ? cloneForm(result.data) : createDefaultUseCasePointForm()
+      useCasePointForm.value = nextForm
+      useCasePointFormByProject.value = {
+        ...useCasePointFormByProject.value,
+        [selectedProjectId.value]: cloneForm(nextForm)
+      }
+      useCasePointMessage.value = '已按当前项目文件重新识别用例点输入，可直接计算或继续修正。'
+    } catch (error) {
+      useCasePointError.value = error.message
+    }
   }
 
   const metricModules = {
@@ -226,7 +382,16 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
       analyze: analyzeProjectFunctionPoint,
       report: exportFunctionPointReport,
       reportFileName: 'function-point-report.md',
-      successMessage: '功能点度量完成，结果已保存到本地任务文件。',
+      successMessage: '功能点度量完成，结果基于当前项目文件识别并已保存。',
+      prepareAnalyze: async () => {
+        const result = await fetchFunctionPointAssist(selectedProjectId.value)
+        const nextForm = result?.data ? cloneForm(result.data) : createDefaultFunctionPointForm()
+        functionPointForm.value = nextForm
+        functionPointFormByProject.value = {
+          ...functionPointFormByProject.value,
+          [selectedProjectId.value]: cloneForm(nextForm)
+        }
+      },
       beforeAnalyze: () => {
         functionPointForm.value.generalSystemCharacteristicTotal = functionPointGscTotal()
       },
@@ -242,7 +407,16 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
       analyze: analyzeProjectUseCasePoint,
       report: exportUseCasePointReport,
       reportFileName: 'use-case-point-report.md',
-      successMessage: '用例点估算完成，结果已保存到本地任务文件。',
+      successMessage: '用例点度量完成，结果基于当前项目文件识别并已保存。',
+      prepareAnalyze: async () => {
+        const result = await fetchUseCasePointAssist(selectedProjectId.value)
+        const nextForm = result?.data ? cloneForm(result.data) : createDefaultUseCasePointForm()
+        useCasePointForm.value = nextForm
+        useCasePointFormByProject.value = {
+          ...useCasePointFormByProject.value,
+          [selectedProjectId.value]: cloneForm(nextForm)
+        }
+      },
       beforeAnalyze: () => {
         useCasePointForm.value.technicalFactorTotal = useCaseTechnicalTotal()
         useCasePointForm.value.environmentalFactorTotal = useCaseEnvironmentalTotal()
@@ -329,6 +503,9 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
     }
     module.loading.value = true
     try {
+      if (module.prepareAnalyze) {
+        await module.prepareAnalyze()
+      }
       module.beforeAnalyze?.()
       const payload = module.payload ? module.payload() : undefined
       const result = await module.analyze(selectedProjectId.value, payload)
@@ -493,8 +670,10 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
     runAiAnalysis,
     exportAiMarkdown,
     runFunctionPointAnalysis,
+    loadFunctionPointAssist,
     exportFunctionPointMarkdown,
     runUseCasePointAnalysis,
+    loadUseCasePointAssist,
     exportUseCasePointMarkdown,
     runModelAnalysis,
     exportModelMarkdown

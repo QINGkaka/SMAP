@@ -55,6 +55,10 @@ defineEmits([
   'clear-selected-files'
 ])
 
+function methodSpan(method) {
+  return Math.max(1, Number(method.endLine || 0) - Number(method.startLine || 0) + 1)
+}
+
 function fileShortName(fileName) {
   if (!fileName) {
     return '-'
@@ -100,6 +104,36 @@ function scanStatusClass(status) {
   }
   return 'success'
 }
+
+function complexityScatterPoints(methods) {
+  const items = [...(methods || [])]
+    .sort((left, right) => right.cyclomaticComplexity - left.cyclomaticComplexity)
+    .slice(0, 20)
+  const maxComplexity = Math.max(...items.map(item => Number(item.cyclomaticComplexity || 0)), 1)
+  const maxSpan = Math.max(...items.map(item => methodSpan(item)), 1)
+  return items.map(item => {
+    const span = methodSpan(item)
+    return {
+      key: `${item.fileName}-${item.methodName}-${item.startLine}`,
+      label: item.methodName,
+      shortFile: fileShortName(item.fileName),
+      cx: 26 + (span / maxSpan) * 288,
+      cy: 176 - (Number(item.cyclomaticComplexity || 0) / maxComplexity) * 132,
+      r: item.riskLevel === 'HIGH' || item.riskLevel === 'EXTREME' ? 7 : 5,
+      level: item.riskLevel
+    }
+  })
+}
+
+function scatterPointClass(level) {
+  if (level === 'HIGH' || level === 'EXTREME') {
+    return 'danger'
+  }
+  if (level === 'MEDIUM') {
+    return 'gold'
+  }
+  return 'blue'
+}
 </script>
 
 <template>
@@ -137,24 +171,54 @@ function scanStatusClass(status) {
         <article>
           <span>文件</span>
           <strong>{{ result.summary.fileCount }}</strong>
-          <small>已扫描</small>
         </article>
         <article>
           <span>方法</span>
           <strong>{{ result.summary.methodCount }}</strong>
-          <small>可分析</small>
         </article>
         <article>
           <span>均值</span>
           <strong>{{ result.summary.averageComplexity }}</strong>
-          <small>复杂度</small>
         </article>
         <article>
           <span>高风险</span>
           <strong>{{ result.summary.highRiskMethodCount }}</strong>
-          <small>&ge; 10</small>
         </article>
       </div>
+
+      <section v-if="result.methods.length > 0" class="visual-card">
+        <div class="visual-card-copy">
+          <h3>复杂度散点图</h3>
+          <p>每个点代表一个方法。横轴是方法跨度，纵轴是圈复杂度，颜色表示风险等级。</p>
+        </div>
+        <div class="scatter-chart">
+          <svg viewBox="0 0 360 220" role="img" aria-label="复杂度散点图">
+            <line x1="26" y1="24" x2="26" y2="184" class="chart-axis-line" />
+            <line x1="26" y1="184" x2="334" y2="184" class="chart-axis-line" />
+            <line x1="26" y1="52" x2="334" y2="52" class="chart-grid-line" />
+            <line x1="26" y1="96" x2="334" y2="96" class="chart-grid-line" />
+            <line x1="26" y1="140" x2="334" y2="140" class="chart-grid-line" />
+            <circle
+              v-for="point in complexityScatterPoints(result.methods)"
+              :key="point.key"
+              :cx="point.cx"
+              :cy="point.cy"
+              :r="point.r"
+              class="scatter-point"
+              :class="scatterPointClass(point.level)"
+            />
+          </svg>
+          <div class="scatter-legend">
+            <span><i class="blue"></i>低风险</span>
+            <span><i class="gold"></i>中风险</span>
+            <span><i class="danger"></i>高风险</span>
+          </div>
+          <div class="scatter-axis-labels">
+            <span>Y 轴：圈复杂度</span>
+            <span>X 轴：方法跨度（行）</span>
+          </div>
+        </div>
+      </section>
 
       <section class="metric-card">
         <div class="metric-card-header">
@@ -192,9 +256,6 @@ function scanStatusClass(status) {
               </tr>
             </tbody>
           </table>
-        </div>
-        <div v-if="result.methods.length === 0" class="table-notice">
-          接口与抽象声明不单独计入
         </div>
       </section>
 

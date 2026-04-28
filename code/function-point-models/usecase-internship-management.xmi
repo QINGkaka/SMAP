@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<useCaseModel name="Internship Management">
+  <actor name="Student" />
+  <actor name="Teacher" />
+  <actor name="Enterprise Mentor" />
+  <actor name="Enterprise Directory Service" />
+  <useCase name="SubmitInternshipApplication" fpType="EI" det="12" ftr="2" />
+  <useCase name="BindEnterpriseMentor" fpType="EI" det="7" ftr="2" />
+  <useCase name="ExportPlacementStatistics" fpType="EO" det="24" ftr="4" />
+  <useCase name="GenerateRiskReminder" fpType="EO" det="13" ftr="4" />
+  <useCase name="QueryWeeklyLog" fpType="EQ" det="8" ftr="2" />
+  <internalLogicalFile name="InternshipLog" det="44" ret="5" />
+  <internalLogicalFile name="AssessmentRecord" det="21" ret="2" />
+  <externalInterfaceFile name="EnterpriseDirectory" det="13" ret="1" />
+</useCaseModel>

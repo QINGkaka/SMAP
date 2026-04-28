@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<functionPointModel name="Dormitory Repair">
+  <transaction name="SubmitRepairRequest" fpType="EI" det="10" ftr="3" />
+  <transaction name="AssignMaintenanceWorker" fpType="EI" det="8" ftr="2" />
+  <transaction name="ExportRepairSLAReport" fpType="EO" det="26" ftr="4" />
+  <transaction name="NotifyLateRepairList" fpType="EO" det="15" ftr="4" />
+  <transaction name="QueryRepairProgress" fpType="EQ" det="9" ftr="2" />
+  <internalLogicalFile name="RepairTicketArchive" det="43" ret="4" />
+  <internalLogicalFile name="DormAssetRegistry" det="24" ret="2" />
+  <externalInterfaceFile name="VendorDispatchFeed" det="17" ret="1" />
+</functionPointModel>

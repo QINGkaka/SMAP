@@ -70,7 +70,7 @@ public class ModelAnalysisService {
             throw new IllegalArgumentException("当前项目没有可分析的模型文件，请上传 .xml、.xmi 或 .oom 文件");
         }
         if (classes.isEmpty()) {
-            throw new IllegalArgumentException("已找到模型文件，但未解析到 UML 类、接口、属性或操作信息");
+            throw new IllegalArgumentException("已找到 .xml/.xmi/.oom 文件，但未解析到 UML 类模型信息。当前模块只统计类/接口/属性/操作/继承；如果上传的是用例图、流程图或普通配置 XML，请改用对应模块或上传类图模型文件。");
         }
 
         applyInheritance(classes);

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmlns:uml="http://www.omg.org/spec/UML/20161101" xmlns:xmi="http://www.omg.org/XMI" xmi:version="2.5" name="FinanceDomainModel">
+  <packagedElement xmi:type="uml:Class" name="VoucherLedgerModel">
+    <ownedAttribute name="voucherNo" />
+    <ownedAttribute name="amount" />
+    <ownedAttribute name="approverId" />
+    <ownedAttribute name="status" />
+    <ownedOperation name="approveVoucher" />
+    <ownedOperation name="rejectVoucher" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" name="BudgetSnapshotModel">
+    <ownedAttribute name="budgetCode" />
+    <ownedAttribute name="remainingAmount" />
+    <ownedAttribute name="freezeAmount" />
+    <ownedOperation name="consumeBudget" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" name="PaymentChannelModel">
+    <ownedAttribute name="channelCode" />
+    <ownedAttribute name="settleWindow" />
+    <ownedOperation name="submitOrder" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Interface" name="BankGatewayPort">
+    <ownedOperation name="transfer" />
+  </packagedElement>
+</uml:Model>

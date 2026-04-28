@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataFlowDiagram name="Library Service">
+  <process name="BorrowBook" fpType="EI" det="8" ftr="2" />
+  <process name="ReturnBook" fpType="EI" det="7" ftr="2" />
+  <process name="ReserveBook" fpType="EI" det="10" ftr="3" />
+  <process name="GenerateOverdueNotice" fpType="EO" det="22" ftr="4" />
+  <process name="SearchCatalog" fpType="EQ" det="10" ftr="2" />
+  <process name="QueryBorrowHistory" fpType="EQ" det="18" ftr="3" />
+  <dataStore name="CirculationRecord" fpType="ILF" det="34" ret="3" />
+  <externalFile name="StudentProfileFeed" fpType="EIF" det="16" ret="1" />
+</dataFlowDiagram>

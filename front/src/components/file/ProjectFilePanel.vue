@@ -87,6 +87,10 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  selectedFileCount: {
+    type: Number,
+    default: 0
+  },
   uploadLoading: {
     type: Boolean,
     default: false
@@ -137,7 +141,16 @@ function handlePageChange(page) {
 
 <template>
   <div class="project-file-panel">
-    <div v-if="showUploadArea" class="project-file-panel-upload">
+    <div v-if="showUploadArea" class="project-file-panel-upload upload-toolbox">
+      <div class="upload-toolbox-head">
+        <div>
+          <strong>上传文件</strong>
+          <small>{{ selectedFileCount > 0 ? `已选 ${selectedFileCount} 个文件` : '支持批量导入当前项目文件' }}</small>
+        </div>
+        <span class="status-chip" :class="selectedFileCount > 0 ? 'success' : 'neutral'">
+          {{ selectedFileCount > 0 ? '待保存' : '就绪' }}
+        </span>
+      </div>
       <div class="upload-action-row">
         <label class="upload-button upload-picker-button">
           {{ uploadLabel }}
@@ -153,10 +166,10 @@ function handlePageChange(page) {
           {{ uploadLoading ? '上传中...' : uploadButtonText }}
         </button>
       </div>
-      <div class="file-status">
+      <div class="file-status" :class="{ active: selectedFileCount > 0 }">
         <div class="file-status-copy">
-          <span class="file-status-label">支持格式</span>
-          <strong>{{ selectedFileName || uploadHint }}</strong>
+          <strong class="file-status-text">{{ selectedFileCount > 0 ? selectedFileName : '未选择文件' }}</strong>
+          <small class="file-status-subtext">{{ selectedFileCount > 0 ? '点击保存后写入当前项目文件清单' : uploadHint }}</small>
         </div>
         <span class="success-dot"></span>
       </div>
@@ -164,7 +177,10 @@ function handlePageChange(page) {
 
     <div class="upload-list">
       <div v-if="panelTitle || showRefresh" class="project-list-header">
-        <strong>{{ panelTitle }}</strong>
+        <div class="project-list-title">
+          <strong>{{ panelTitle }}</strong>
+          <span v-if="files.length > 0" class="count-badge">{{ filteredCount }}/{{ files.length }}</span>
+        </div>
         <button v-if="showRefresh" type="button" class="text-button" @click="emit('refresh')">{{ refreshLabel }}</button>
       </div>
 
@@ -224,10 +240,13 @@ function handlePageChange(page) {
         <div v-else-if="filteredCount === 0" class="empty-state compact">没有匹配当前筛选条件的文件</div>
 
         <article v-for="file in pagedFiles" :key="file.id" :class="itemClass">
-          <div>
-            <strong>{{ file.originalName }}</strong>
-            <small v-if="showDate">{{ file.fileType }} · {{ file.sizeLabel }} · {{ file.uploadedAtLabel }}</small>
-            <small v-else>{{ file.fileType }} · {{ file.sizeLabel }}</small>
+          <div class="upload-item-main">
+            <div class="upload-item-top">
+              <span class="file-type-badge">{{ file.fileType }}</span>
+              <strong>{{ file.originalName }}</strong>
+            </div>
+            <small v-if="showDate">{{ file.sizeLabel }} · {{ file.uploadedAtLabel }}</small>
+            <small v-else>{{ file.sizeLabel }}</small>
           </div>
           <div v-if="showDate" class="upload-meta">
             <button type="button" class="mini-button danger" @click="handleRemove(file)">删除</button>

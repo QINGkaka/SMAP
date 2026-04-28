@@ -107,10 +107,6 @@ defineEmits([
         <strong>{{ result.summary.highRiskClassCount }}</strong>
       </article>
     </div>
-    <div class="oo-explain">
-      <span>CK：CBO、RFC、DIT、NOC、WMC、LCOM</span>
-      <span>LK：NOA、NOO、CS</span>
-    </div>
     <div class="radar-wrap">
       <div class="radar-grid">
         <span v-for="axis in radarAxes" :key="axis" class="axis-label">{{ axis }}</span>

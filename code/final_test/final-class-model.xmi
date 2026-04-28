@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmlns:uml="http://www.omg.org/spec/UML/20161101" xmlns:xmi="http://www.omg.org/XMI" xmi:version="2.5" name="FinalClassModelXmi">
+  <packagedElement xmi:type="uml:Class" name="EnrollmentServiceModel">
+    <ownedAttribute name="repository" />
+    <ownedAttribute name="scorePolicy" />
+    <ownedOperation name="enroll" />
+    <ownedOperation name="reviewPerformance" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" name="FinanceServiceModel">
+    <ownedAttribute name="notificationGateway" />
+    <ownedOperation name="settle" />
+    <ownedOperation name="classify" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Class" name="AccessControlServiceModel">
+    <ownedAttribute name="nightRule" />
+    <ownedOperation name="countAlerts" />
+    <ownedOperation name="classifyZone" />
+  </packagedElement>
+  <packagedElement xmi:type="uml:Interface" name="NotificationGatewayPort">
+    <ownedOperation name="send" />
+  </packagedElement>
+</uml:Model>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<useCaseModel name="Alumni Service">
+  <actor name="Alumni User" />
+  <actor name="School Admin" />
+  <actor name="Donation Platform" />
+  <useCase name="RegisterDonationIntent" fpType="EI" det="10" ftr="2" />
+  <useCase name="UpdateCareerProfile" fpType="EI" det="11" ftr="3" />
+  <useCase name="ExportContributionReport" fpType="EO" det="27" ftr="4" />
+  <useCase name="GenerateEventInvitation" fpType="EO" det="15" ftr="4" />
+  <useCase name="QueryNetworkCircle" fpType="EQ" det="9" ftr="2" />
+  <internalLogicalFile name="AlumniProfileFile" det="46" ret="4" />
+  <externalInterfaceFile name="DonationPlatformFeed" det="17" ret="1" />
+</useCaseModel>

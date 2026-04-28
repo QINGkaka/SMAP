@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<useCaseModel name="Smart Classroom">
+  <actor name="Teacher" />
+  <actor name="Student" />
+  <actor name="Device Control Platform" />
+  <useCase name="SubmitAttendanceCorrection" fpType="EI" det="8" ftr="2" />
+  <useCase name="BindClassroomDevice" fpType="EI" det="9" ftr="3" />
+  <useCase name="ExportUsageInsight" fpType="EO" det="25" ftr="4" />
+  <useCase name="GenerateExceptionDigest" fpType="EO" det="16" ftr="4" />
+  <useCase name="QueryPlaybackEvidence" fpType="EQ" det="9" ftr="2" />
+  <internalLogicalFile name="AttendanceEvidenceArchive" det="41" ret="4" />
+  <externalInterfaceFile name="DeviceControlFeed" det="18" ret="1" />
+</useCaseModel>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<functionPointModel name="Graduation Review">
+  <transaction name="SubmitDefenseApplication" fpType="EI" det="12" ftr="3" />
+  <transaction name="AssignReviewer" fpType="EI" det="8" ftr="2" />
+  <transaction name="PublishReviewSummary" fpType="EO" det="21" ftr="3" />
+  <transaction name="QueryDefenseSlot" fpType="EQ" det="5" ftr="1" />
+  <internalLogicalFile name="ThesisRecord" det="42" ret="4" />
+  <internalLogicalFile name="ReviewOpinionArchive" det="18" ret="2" />
+  <externalInterfaceFile name="FacultyProfile" det="14" ret="1" />
+</functionPointModel>

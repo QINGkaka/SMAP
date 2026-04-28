@@ -40,6 +40,7 @@ const props = defineProps({
 
 defineEmits([
   'analyze',
+  'assist',
   'export',
   'update-mode',
   'update-count',
@@ -65,8 +66,8 @@ const sections = computed(() => [
     detailKey: 'externalInputDetails',
     relationKey: 'ftr',
     relationLabel: 'FTR',
-    sizeLabel: 'DER',
-    detailHint: '事务功能按课件中的 DER + FTR 自动判定复杂度',
+    sizeLabel: 'DET',
+    detailHint: '事务功能按课件中的 DET + FTR 自动判定复杂度',
     values: props.form.externalInputs,
     details: props.form.externalInputDetails || []
   },
@@ -77,8 +78,8 @@ const sections = computed(() => [
     detailKey: 'externalOutputDetails',
     relationKey: 'ftr',
     relationLabel: 'FTR',
-    sizeLabel: 'DER',
-    detailHint: '事务功能按课件中的 DER + FTR 自动判定复杂度',
+    sizeLabel: 'DET',
+    detailHint: '事务功能按课件中的 DET + FTR 自动判定复杂度',
     values: props.form.externalOutputs,
     details: props.form.externalOutputDetails || []
   },
@@ -89,8 +90,8 @@ const sections = computed(() => [
     detailKey: 'externalInquiryDetails',
     relationKey: 'ftr',
     relationLabel: 'FTR',
-    sizeLabel: 'DER',
-    detailHint: '事务功能按课件中的 DER + FTR 自动判定复杂度',
+    sizeLabel: 'DET',
+    detailHint: '事务功能按课件中的 DET + FTR 自动判定复杂度',
     values: props.form.externalInquiries,
     details: props.form.externalInquiryDetails || []
   },
@@ -256,6 +257,20 @@ const resultComponentSummaries = computed(() => {
     { code: 'EIF', label: '外部接口文件', itemCount: 0, lowCount: 0, averageCount: 0, highCount: 0, functionPoints: props.result.externalInterfaceFiles || 0 }
   ]
 })
+
+const resultBarItems = computed(() => {
+  const items = resultComponentSummaries.value.map((item, index) => ({
+    label: item.code,
+    title: item.label,
+    value: Number(item.functionPoints || 0),
+    tone: ['blue', 'green', 'gold', 'cyan', 'danger'][index % 5]
+  }))
+  const max = Math.max(...items.map(item => item.value), 1)
+  return items.map(item => ({
+    ...item,
+    y: 180 - (item.value / max) * 120
+  }))
+})
 </script>
 
 <template>
@@ -275,33 +290,16 @@ const resultComponentSummaries = computed(() => {
       <div class="mode-panel-head">
         <div>
           <strong>IFPUG 计数方式</strong>
-          <p>详细计数使用课件里的 DET / FTR / RET 判级规则，预估算模式保留低中高人工录入。</p>
+          <p class="mode-panel-copy">系统会优先根据当前项目文件识别 EI、EO、EQ、ILF、EIF 明细项，再按 DET、FTR、RET 自动判级。这里的输入主要用于修正识别结果。</p>
         </div>
-        <div class="mode-toggle">
-          <button
-            type="button"
-            class="mode-button"
-            :class="{ active: form.countMode === 'DETAILED' }"
-            @click="$emit('update-mode', 'DETAILED')"
-          >
-            详细计数
-          </button>
-          <button
-            type="button"
-            class="mode-button"
-            :class="{ active: form.countMode === 'ESTIMATED' }"
-            @click="$emit('update-mode', 'ESTIMATED')"
-          >
-            预估算
-          </button>
-        </div>
+        <div class="mode-badge">文件识别主导</div>
       </div>
 
       <div class="fp-overview-grid">
         <article v-for="section in previewSummaries" :key="section.code" class="fp-overview-card">
           <span>{{ section.code }}</span>
           <strong>{{ section.summary.functionPoints }}</strong>
-          <small>{{ section.title }} · {{ section.summary.itemCount }} 项</small>
+          <small>{{ section.summary.itemCount }} 项</small>
           <em>{{ section.summary.lowCount }}/{{ section.summary.averageCount }}/{{ section.summary.highCount }}</em>
         </article>
         <article class="fp-overview-card fp-overview-card-accent">
@@ -331,8 +329,7 @@ const resultComponentSummaries = computed(() => {
           </div>
         </summary>
 
-        <div v-if="form.countMode === 'DETAILED'" class="function-point-panel-body detailed-body">
-          <div class="detail-hint">{{ section.detailHint }}</div>
+        <div class="function-point-panel-body detailed-body">
           <div class="detail-table">
             <div class="detail-table-head">
               <span>功能项</span>
@@ -413,35 +410,6 @@ const resultComponentSummaries = computed(() => {
           </button>
         </div>
 
-        <div v-else class="function-point-panel-body">
-          <label>
-            <span>低</span>
-            <input
-              :value="section.values.low"
-              type="number"
-              min="0"
-              @input="$emit('update-count', { section: section.key, field: 'low', value: Number($event.target.value) || 0 })"
-            />
-          </label>
-          <label>
-            <span>中</span>
-            <input
-              :value="section.values.average"
-              type="number"
-              min="0"
-              @input="$emit('update-count', { section: section.key, field: 'average', value: Number($event.target.value) || 0 })"
-            />
-          </label>
-          <label>
-            <span>高</span>
-            <input
-              :value="section.values.high"
-              type="number"
-              min="0"
-              @input="$emit('update-count', { section: section.key, field: 'high', value: Number($event.target.value) || 0 })"
-            />
-          </label>
-        </div>
       </details>
     </div>
 
@@ -450,7 +418,6 @@ const resultComponentSummaries = computed(() => {
         <span>通用系统特征 GSC</span>
         <strong>{{ gscTotal }} / 70</strong>
       </summary>
-      <p class="factor-hint">VAF = 0.65 + 0.01 × GSC，总分按 14 个通用系统特征的 0-5 评分累加。</p>
       <div class="factor-score-panel embedded">
         <div class="factor-score-grid">
           <label v-for="(label, index) in gscLabels" :key="label">
@@ -478,7 +445,7 @@ const resultComponentSummaries = computed(() => {
       <div class="loc-summary-grid">
         <article>
           <span>模式</span>
-          <strong>{{ result.countMode === 'DETAILED' ? '详细计数' : '预估算' }}</strong>
+          <strong>文件识别 + IFPUG 判级</strong>
         </article>
         <article>
           <span>UFP</span>
@@ -494,10 +461,27 @@ const resultComponentSummaries = computed(() => {
         </article>
       </div>
 
+      <section class="visual-card">
+        <div class="visual-card-copy">
+          <h3>组件功能点分布</h3>
+          <p>每个圆点表示一个功能点类别的累计值，越高说明该类别对总功能点贡献越大。</p>
+        </div>
+        <div class="lollipop-chart">
+          <svg viewBox="0 0 360 220" role="img" aria-label="功能点棒棒糖图">
+            <line x1="28" y1="184" x2="332" y2="184" class="chart-axis-line" />
+            <g v-for="(item, index) in resultBarItems" :key="item.label">
+              <line :x1="52 + index * 62" y1="184" :x2="52 + index * 62" :y2="item.y" class="lollipop-stem" />
+              <circle :cx="52 + index * 62" :cy="item.y" r="10" class="lollipop-head" :class="item.tone" />
+              <text :x="52 + index * 62" y="206" text-anchor="middle" class="chart-text-label">{{ item.label }}</text>
+              <text :x="52 + index * 62" :y="item.y - 16" text-anchor="middle" class="chart-text-value">{{ item.value }}</text>
+            </g>
+          </svg>
+        </div>
+      </section>
+
       <div class="result-table-card">
         <div class="result-table-head">
           <strong>组件统计</strong>
-          <small>系统按课件公式自动汇总功能点</small>
         </div>
         <table class="result-table">
           <thead>
@@ -526,14 +510,13 @@ const resultComponentSummaries = computed(() => {
       <div v-if="result.detailItems && result.detailItems.length" class="result-table-card">
         <div class="result-table-head">
           <strong>详细计数明细</strong>
-          <small>事务功能使用 DER + FTR，数据功能使用 DET + RET</small>
         </div>
         <table class="result-table">
           <thead>
             <tr>
               <th>类别</th>
               <th>功能项</th>
-              <th>DET/DER</th>
+              <th>DET</th>
               <th>FTR/RET</th>
               <th>复杂度</th>
               <th>功能点</th>
@@ -625,27 +608,17 @@ const resultComponentSummaries = computed(() => {
   line-height: 1.5;
 }
 
-.mode-toggle {
+.mode-badge {
   display: inline-flex;
-  border: 1px solid var(--color-border, #e5e6eb);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f7f8fa;
-}
-
-.mode-button {
-  border: 0;
-  background: transparent;
-  color: var(--color-text-secondary, #86909c);
-  padding: 10px 14px;
-  font: inherit;
-  cursor: pointer;
-  min-width: 88px;
-}
-
-.mode-button.active {
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
   background: #edf3ff;
   color: var(--color-primary-strong, #165dff);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .fp-overview-grid {

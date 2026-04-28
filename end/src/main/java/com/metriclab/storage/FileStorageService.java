@@ -110,8 +110,16 @@ public class FileStorageService {
         return tasksDirectory(projectId).resolve("latest-function-point-result.json");
     }
 
+    public Path latestFunctionPointRequestPath(String projectId) {
+        return tasksDirectory(projectId).resolve("latest-function-point-request.json");
+    }
+
     public Path latestUseCasePointResultPath(String projectId) {
         return tasksDirectory(projectId).resolve("latest-use-case-point-result.json");
+    }
+
+    public Path latestUseCasePointRequestPath(String projectId) {
+        return tasksDirectory(projectId).resolve("latest-use-case-point-request.json");
     }
 
     public Path latestModelAnalysisResultPath(String projectId) {

@@ -50,6 +50,21 @@ defineEmits([
   'select-all-files',
   'clear-selected-files'
 ])
+
+function structureItems(summary) {
+  const values = [
+    { label: '类', value: summary.classCount, tone: 'blue' },
+    { label: '接口', value: summary.interfaceCount, tone: 'cyan' },
+    { label: '属性', value: summary.attributeCount, tone: 'gold' },
+    { label: '操作', value: summary.operationCount, tone: 'green' }
+  ]
+  const max = Math.max(...values.map(item => item.value), 1)
+  return values.map(item => ({
+    ...item,
+    width: 56,
+    height: 32 + (item.value / max) * 124
+  }))
+}
 </script>
 
 <template>
@@ -71,14 +86,14 @@ defineEmits([
     :scope-mode="scopeMode"
     :available-files="availableFiles"
     :selected-file-ids="selectedFileIds"
-    supported-label=".xml、.xmi、.oom"
+    supported-label="类图模型 .xml、.xmi、.oom"
     @update:scope-mode="$emit('update:scopeMode', $event)"
     @toggle-file="$emit('toggle-file', $event)"
     @select-all="$emit('select-all-files')"
     @clear-selection="$emit('clear-selected-files')"
   />
   <div v-if="!result" class="empty-state loc-empty">
-    暂无模型度量结果。请上传 `.xml`、`.xmi` 或 `.oom` 模型文件，然后点击“开始模型分析”。
+    暂无模型度量结果。请上传包含类、接口、属性、操作或继承关系的类图模型文件（`.xml`、`.xmi`、`.oom`），然后点击“开始模型分析”。
   </div>
   <div v-else class="loc-result">
     <div class="loc-summary-grid">
@@ -99,6 +114,30 @@ defineEmits([
         <strong>{{ result.summary.highRiskClassCount }}</strong>
       </article>
     </div>
+    <section class="visual-card">
+      <div class="visual-card-copy">
+        <h3>模型结构分布</h3>
+        <p>柱高表示模型实体数量，用来对比类、接口、属性和操作的规模差异。</p>
+      </div>
+      <div class="column-chart">
+        <svg viewBox="0 0 320 220" role="img" aria-label="模型结构柱状图">
+          <line x1="28" y1="184" x2="296" y2="184" class="chart-axis-line" />
+          <g v-for="(item, index) in structureItems(result.summary)" :key="item.label">
+            <rect
+              :x="44 + index * 66"
+              :y="184 - item.height"
+              :width="item.width"
+              :height="item.height"
+              rx="10"
+              class="column-bar"
+              :class="item.tone"
+            />
+            <text :x="72 + index * 66" y="202" text-anchor="middle" class="chart-text-label">{{ item.label }}</text>
+            <text :x="72 + index * 66" :y="174 - item.height" text-anchor="middle" class="chart-text-value">{{ item.value }}</text>
+          </g>
+        </svg>
+      </div>
+    </section>
     <div class="loc-table-wrap">
       <table class="loc-table oo-table">
         <thead>

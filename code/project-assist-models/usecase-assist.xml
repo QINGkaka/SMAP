@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml>
+  <actor name="Student" />
+  <actor name="Teacher" />
+  <actor name="Admin" />
+  <actor name="NotificationSystem" />
+  <useCase name="CreateStudent" />
+  <useCase name="AssignAdvisor" />
+  <useCase name="ReviewWarning" />
+  <useCase name="ExportRiskReport" />
+  <useCase name="QueryStudent" />
+  <useCase name="ApproveCourse" />
+</uml>

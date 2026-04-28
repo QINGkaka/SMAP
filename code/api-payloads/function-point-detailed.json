@@ -1,0 +1,26 @@
+{
+  "countMode": "DETAILED",
+  "externalInputs": { "low": 0, "average": 0, "high": 0 },
+  "externalOutputs": { "low": 0, "average": 0, "high": 0 },
+  "externalInquiries": { "low": 0, "average": 0, "high": 0 },
+  "internalLogicalFiles": { "low": 0, "average": 0, "high": 0 },
+  "externalInterfaceFiles": { "low": 0, "average": 0, "high": 0 },
+  "externalInputDetails": [
+    { "name": "CreateStudent", "det": 5, "ftr": 1, "ret": null },
+    { "name": "AssignAdvisor", "det": 8, "ftr": 2, "ret": null }
+  ],
+  "externalOutputDetails": [
+    { "name": "ExportRiskReport", "det": 25, "ftr": 4, "ret": null }
+  ],
+  "externalInquiryDetails": [
+    { "name": "QueryStudent", "det": 4, "ftr": 2, "ret": null }
+  ],
+  "internalLogicalFileDetails": [
+    { "name": "StudentFile", "det": 25, "ret": 2, "ftr": null }
+  ],
+  "externalInterfaceFileDetails": [
+    { "name": "CourseCatalog", "det": 15, "ret": 1, "ftr": null }
+  ],
+  "generalSystemCharacteristicTotal": 35,
+  "generalSystemCharacteristics": [3, 2, 3, 2, 3, 3, 2, 3, 2, 3, 2, 3, 2, 2]
+}

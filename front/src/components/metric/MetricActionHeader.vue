@@ -24,24 +24,40 @@ defineProps({
     type: String,
     default: '导出 Markdown'
   },
+  helperText: {
+    type: String,
+    default: ''
+  },
+  helperDisabled: {
+    type: Boolean,
+    default: false
+  },
   exportDisabled: {
     type: Boolean,
     default: false
   }
 })
 
-defineEmits(['primary', 'export'])
+defineEmits(['primary', 'helper', 'export'])
 </script>
 
 <template>
   <div class="loc-header metric-action-header">
     <div class="metric-action-copy">
-      <p v-if="eyebrow" class="eyebrow">{{ eyebrow }}</p>
       <h2>{{ title }}</h2>
     </div>
     <div class="button-row metric-action-buttons">
       <button type="button" class="primary-button" :disabled="loading" @click="$emit('primary')">
         {{ loading ? primaryLoadingText : primaryText }}
+      </button>
+      <button
+        v-if="helperText"
+        type="button"
+        class="secondary-button"
+        :disabled="helperDisabled || loading"
+        @click="$emit('helper')"
+      >
+        {{ helperText }}
       </button>
       <button
         type="button"

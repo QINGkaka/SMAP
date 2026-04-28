@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataFlowDiagram name="Course Enrollment">
+  <process name="SubmitCourseSelection" fpType="EI" det="9" ftr="3" />
+  <process name="DropCourse" fpType="EI" det="5" ftr="2" />
+  <process name="GenerateConflictReport" fpType="EO" det="24" ftr="4" />
+  <process name="QuerySchedule" fpType="EQ" det="6" ftr="2" />
+  <dataStore name="EnrollmentFile" fpType="ILF" det="36" ret="3" />
+  <externalFile name="CampusCalendar" fpType="EIF" det="12" ret="1" />
+</dataFlowDiagram>

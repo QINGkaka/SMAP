@@ -46,7 +46,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['analyze', 'export', 'update-field', 'update-technical', 'update-environmental'])
+defineEmits(['analyze', 'assist', 'export', 'update-field', 'update-technical', 'update-environmental'])
 
 const actorGroups = computed(() => [
   { key: 'simpleActors', label: '简单', value: props.form.simpleActors },
@@ -67,12 +67,31 @@ function totalOf(groups) {
 function splitOf(groups) {
   return groups.map((item) => Number(item.value || 0)).join(' / ')
 }
+
+const resultBars = computed(() => {
+  if (!props.result) {
+    return []
+  }
+  const items = [
+    { label: 'UAW', title: '参与者权重', value: Number(props.result.actorWeight || 0), tone: 'blue' },
+    { label: 'UUCW', title: '用例权重', value: Number(props.result.useCaseWeight || 0), tone: 'green' },
+    { label: 'TCF', title: '技术因子', value: Number(props.result.technicalComplexityFactor || 0), tone: 'cyan' },
+    { label: 'ECF', title: '环境因子', value: Number(props.result.environmentalComplexityFactor || 0), tone: 'gold' }
+  ]
+  const max = Math.max(...items.map(item => item.value), 1)
+  return items.map((item, index) => ({
+    ...item,
+    r: 24 + (item.value / max) * 26,
+    cx: [76, 212, 132, 264][index],
+    cy: [86, 78, 182, 174][index]
+  }))
+})
 </script>
 
 <template>
   <section class="use-case-view compact-use-case-view">
     <MetricActionHeader
-      title="用例点估算"
+      title="用例点度量"
       :loading="loading"
       primary-text="计算"
       primary-loading-text="计算中..."
@@ -82,31 +101,31 @@ function splitOf(groups) {
       @export="$emit('export')"
     />
 
+    <section class="ucp-intro-card">
+      <strong>文件识别主导</strong>
+      <p>系统会优先读取当前项目中的用例模型文件，以及控制器、服务、外部接口类名，自动生成参与者和用例复杂度。这里的数字主要用于修正识别结果，不再要求从零手填。</p>
+    </section>
+
     <div class="ucp-overview-grid">
       <article class="ucp-overview-card">
         <span>参与者</span>
         <strong>{{ totalOf(actorGroups) }}</strong>
-        <small>{{ splitOf(actorGroups) }}</small>
       </article>
       <article class="ucp-overview-card">
         <span>用例</span>
         <strong>{{ totalOf(useCaseGroups) }}</strong>
-        <small>{{ splitOf(useCaseGroups) }}</small>
       </article>
       <article class="ucp-overview-card">
-        <span>TCF</span>
+        <span>技术总分</span>
         <strong>{{ technicalTotal }}</strong>
-        <small>/ 65</small>
       </article>
       <article class="ucp-overview-card">
-        <span>ECF</span>
+        <span>环境总分</span>
         <strong>{{ environmentalTotal }}</strong>
-        <small>/ 40</small>
       </article>
       <article class="ucp-overview-card ucp-overview-card-accent">
         <span>工时</span>
         <strong>{{ form.productivityHoursPerUseCasePoint }}</strong>
-        <small>每 UCP</small>
       </article>
     </div>
 
@@ -184,12 +203,11 @@ function splitOf(groups) {
       </details>
     </div>
 
-    <details class="form-section-toggle">
+      <details class="form-section-toggle">
       <summary>
-        <span>技术因子 TCF</span>
+        <span>技术因子总分</span>
         <strong>{{ technicalTotal }} / 65</strong>
       </summary>
-      <p class="factor-hint">按课件权重自动计算 `TFactor = Σ(权重 × 打分)`，再求 `TCF = 0.6 + 0.01 × TFactor`。</p>
       <div class="factor-score-panel embedded">
         <div class="factor-score-grid">
           <label v-for="(label, index) in technicalLabels" :key="label">
@@ -208,10 +226,9 @@ function splitOf(groups) {
 
     <details class="form-section-toggle">
       <summary>
-        <span>环境因子 ECF</span>
+        <span>环境因子总分</span>
         <strong>{{ environmentalTotal }} / 40</strong>
       </summary>
-      <p class="factor-hint">按课件权重自动计算 `EFactor = Σ(权重 × 打分)`，再求 `ECF = 1.4 - 0.03 × EFactor`。</p>
       <div class="factor-score-panel embedded">
         <div class="factor-score-grid">
           <label v-for="(label, index) in environmentalLabels" :key="label">
@@ -254,6 +271,21 @@ function splitOf(groups) {
           <strong>{{ result.unadjustedUseCasePoints }}</strong>
         </article>
       </div>
+      <section class="visual-card">
+        <div class="visual-card-copy">
+          <h3>用例点构成</h3>
+          <p>每个气泡代表一个核心指标，气泡越大说明该指标数值越高。</p>
+        </div>
+        <div class="bubble-chart">
+          <svg viewBox="0 0 340 240" role="img" aria-label="用例点气泡图">
+            <g v-for="item in resultBars" :key="item.label">
+              <circle :cx="item.cx" :cy="item.cy" :r="item.r" class="bubble-node" :class="item.tone" />
+              <text :x="item.cx" :y="item.cy - 2" text-anchor="middle" class="bubble-label">{{ item.label }}</text>
+              <text :x="item.cx" :y="item.cy + 14" text-anchor="middle" class="bubble-value">{{ item.value }}</text>
+            </g>
+          </svg>
+        </div>
+      </section>
       <div class="estimation-result-grid">
         <article>
           <span>UAW</span>
@@ -313,6 +345,27 @@ function splitOf(groups) {
   color: #6b7280;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.ucp-intro-card {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border, #e5e6eb);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ucp-intro-card strong {
+  color: var(--color-text, #1d2129);
+  font-size: 13px;
+}
+
+.ucp-intro-card p {
+  margin: 0;
+  color: var(--color-text-secondary, #86909c);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .ucp-overview-grid {

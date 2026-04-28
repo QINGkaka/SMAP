@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataFlowDiagram name="Research Platform">
+  <process name="RegisterProjectProposal" fpType="EI" det="12" ftr="3" />
+  <process name="BindResearchPartner" fpType="EI" det="8" ftr="2" />
+  <process name="ExportFundingAnalysis" fpType="EO" det="28" ftr="4" />
+  <process name="PublishMilestoneDigest" fpType="EO" det="14" ftr="4" />
+  <process name="QueryProposalStatus" fpType="EQ" det="9" ftr="2" />
+  <dataStore name="ResearchProjectFile" fpType="ILF" det="50" ret="5" />
+  <dataStore name="MilestoneSnapshot" fpType="ILF" det="24" ret="2" />
+  <externalFile name="ExpertProfileFeed" fpType="EIF" det="16" ret="1" />
+</dataFlowDiagram>

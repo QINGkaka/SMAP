@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmlns:uml="http://www.omg.org/spec/UML/20131001">
+  <packagedElement xmi:type="uml:Actor" name="Student" />
+  <packagedElement xmi:type="uml:Actor" name="Teacher" />
+  <packagedElement xmi:type="uml:Actor" name="Admin" />
+  <packagedElement xmi:type="uml:Actor" name="NotificationSystem" />
+  <packagedElement xmi:type="uml:UseCase" name="CreateStudent" />
+  <packagedElement xmi:type="uml:UseCase" name="AssignAdvisor" />
+  <packagedElement xmi:type="uml:UseCase" name="ReviewWarning" />
+  <packagedElement xmi:type="uml:UseCase" name="ExportRiskReport" />
+  <packagedElement xmi:type="uml:UseCase" name="QueryStudent" />
+  <packagedElement xmi:type="uml:UseCase" name="ApproveCourse" />
+</uml:Model>

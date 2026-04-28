@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<functionPointModel name="Campus Security">
+  <transaction name="RegisterIncidentReport" fpType="EI" det="11" ftr="3" />
+  <transaction name="DispatchPatrolTask" fpType="EI" det="9" ftr="3" />
+  <transaction name="ExportThreatHeatmap" fpType="EO" det="29" ftr="4" />
+  <transaction name="GenerateNightShiftNotice" fpType="EO" det="17" ftr="4" />
+  <transaction name="QueryIncidentTrace" fpType="EQ" det="10" ftr="2" />
+  <internalLogicalFile name="IncidentArchive" det="47" ret="5" />
+  <internalLogicalFile name="PatrolScheduleFile" det="24" ret="2" />
+  <externalInterfaceFile name="AccessSensorFeed" det="21" ret="1" />
+</functionPointModel>

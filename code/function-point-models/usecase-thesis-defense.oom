@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<useCaseModel name="Thesis Defense">
+  <actor name="Student" />
+  <actor name="Supervisor" />
+  <actor name="External Expert Service" />
+  <useCase name="RegisterTopicChange" fpType="EI" det="8" ftr="2" />
+  <useCase name="ScheduleDefenseSlot" fpType="EI" det="10" ftr="3" />
+  <useCase name="PublishDefenseAgenda" fpType="EO" det="23" ftr="3" />
+  <useCase name="QueryExpertRoster" fpType="EQ" det="6" ftr="2" />
+  <internalLogicalFile name="ThesisArchive" det="35" ret="4" />
+  <externalInterfaceFile name="ExternalResearchProfile" det="17" ret="1" />
+</useCaseModel>

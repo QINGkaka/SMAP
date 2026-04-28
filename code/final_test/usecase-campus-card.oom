@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<useCaseModel name="Campus Card">
+  <actor name="Student" />
+  <actor name="Finance Manager" />
+  <actor name="Bank Settlement Platform" />
+  <useCase name="SubmitRechargeRequest" fpType="EI" det="9" ftr="2" />
+  <useCase name="ReportCardLoss" fpType="EI" det="7" ftr="2" />
+  <useCase name="ExportConsumptionLedger" fpType="EO" det="25" ftr="4" />
+  <useCase name="GenerateAbnormalSwipeNotice" fpType="EO" det="14" ftr="4" />
+  <useCase name="QueryRechargeHistory" fpType="EQ" det="10" ftr="2" />
+  <internalLogicalFile name="CampusCardLedger" det="45" ret="4" />
+  <externalInterfaceFile name="BankSettlementFeed" det="19" ret="1" />
+</useCaseModel>

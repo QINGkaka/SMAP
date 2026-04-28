@@ -1,0 +1,13 @@
+{
+  "simpleActors": 1,
+  "averageActors": 1,
+  "complexActors": 2,
+  "simpleUseCases": 3,
+  "averageUseCases": 2,
+  "complexUseCases": 1,
+  "technicalFactorTotal": 45.0,
+  "environmentalFactorTotal": 20.5,
+  "productivityHoursPerUseCasePoint": 28,
+  "technicalFactors": [5, 4, 2, 4, 2, 2, 2, 3, 3, 2, 2, 5, 3],
+  "environmentalFactors": [3, 3, 3, 5, 3, 3, 0, 0]
+}

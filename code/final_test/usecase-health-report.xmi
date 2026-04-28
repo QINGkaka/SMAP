@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<useCaseModel name="Health Report">
+  <actor name="Student" />
+  <actor name="Counselor" />
+  <actor name="Hospital Service Platform" />
+  <useCase name="SubmitTemperatureLog" fpType="EI" det="7" ftr="2" />
+  <useCase name="UpdateIsolationStatus" fpType="EI" det="10" ftr="3" />
+  <useCase name="ExportRiskDistribution" fpType="EO" det="24" ftr="4" />
+  <useCase name="NotifyFollowUpPlan" fpType="EO" det="13" ftr="4" />
+  <useCase name="QueryDailyHealthSummary" fpType="EQ" det="8" ftr="2" />
+  <internalLogicalFile name="HealthObservationFile" det="44" ret="5" />
+  <externalInterfaceFile name="HospitalSyncFeed" det="20" ret="1" />
+</useCaseModel>

@@ -26,12 +26,22 @@ public class UseCasePointController {
 
     @PostMapping("/analyze")
     public ApiResponse<UseCasePointResult> analyze(@PathVariable String projectId, @RequestBody(required = false) UseCasePointRequest request) throws IOException {
-        return ApiResponse.ok("用例点估算完成", useCasePointService.analyzeProject(projectId, request));
+        return ApiResponse.ok("用例点度量完成", useCasePointService.analyzeProject(projectId, request));
     }
 
     @GetMapping("/latest")
     public ApiResponse<UseCasePointResult> latest(@PathVariable String projectId) throws IOException {
         return ApiResponse.ok(useCasePointService.latestResult(projectId));
+    }
+
+    @GetMapping("/draft")
+    public ApiResponse<UseCasePointRequest> draft(@PathVariable String projectId) throws IOException {
+        return ApiResponse.ok(useCasePointService.draftRequest(projectId));
+    }
+
+    @GetMapping("/assist")
+    public ApiResponse<UseCasePointRequest> assist(@PathVariable String projectId) throws IOException {
+        return ApiResponse.ok(useCasePointService.assistRequest(projectId));
     }
 
     @GetMapping("/report")

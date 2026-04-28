@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objectModel name="LibraryDomainModel">
+  <class name="BookCatalogModel">
+    <attribute name="isbn" />
+    <attribute name="title" />
+    <attribute name="subject" />
+    <attribute name="circulationState" />
+    <operation name="reserveBook" />
+    <operation name="releaseBook" />
+  </class>
+  <class name="BorrowRecordModel">
+    <attribute name="readerId" />
+    <attribute name="borrowDate" />
+    <attribute name="dueDate" />
+    <attribute name="fineAmount" />
+    <operation name="markReturned" />
+  </class>
+  <class name="FineSettlementModel">
+    <attribute name="settlementId" />
+    <attribute name="paidAmount" />
+    <operation name="confirmPayment" />
+  </class>
+  <interface name="CatalogSearchPort">
+    <operation name="searchByKeyword" />
+  </interface>
+</objectModel>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<umlModel name="AnalyticsDomainModel">
+  <class name="RiskAnalyticsAggregate">
+    <ownedAttribute name="studentId" />
+    <ownedAttribute name="riskScore" />
+    <ownedAttribute name="warningLevel" />
+    <ownedAttribute name="snapshotDate" />
+    <ownedOperation name="calculateRisk" />
+    <ownedOperation name="mergeSnapshot" />
+  </class>
+  <class name="AlertRuleAggregate">
+    <ownedAttribute name="ruleCode" />
+    <ownedAttribute name="threshold" />
+    <ownedAttribute name="severity" />
+    <ownedOperation name="match" />
+  </class>
+  <class name="AdvisorWorkbenchAggregate">
+    <ownedAttribute name="advisorId" />
+    <ownedAttribute name="queueSize" />
+    <ownedOperation name="assignWarning" />
+    <ownedOperation name="closeAlert" />
+  </class>
+  <interface name="AnalyticsPublisherPort">
+    <ownedOperation name="publishSnapshot" />
+  </interface>
+</umlModel>
