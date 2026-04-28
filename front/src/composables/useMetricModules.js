@@ -490,7 +490,7 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
     await loadLatestMetricResult(activeMenu.value)
   }
 
-  async function runMetricAnalysis(key = activeMenu.value) {
+  async function runMetricAnalysis(key = activeMenu.value, options = {}) {
     const module = metricModule(key)
     if (!module || !module.analyze) {
       return
@@ -503,7 +503,7 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
     }
     module.loading.value = true
     try {
-      if (module.prepareAnalyze) {
+      if (options.useFileRefresh !== false && module.prepareAnalyze) {
         await module.prepareAnalyze()
       }
       module.beforeAnalyze?.()
@@ -586,7 +586,11 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
   }
 
   async function runFunctionPointAnalysis() {
-    return runMetricAnalysis('function-point')
+    return runMetricAnalysis('function-point', { useFileRefresh: true })
+  }
+
+  async function runFunctionPointAnalysisCurrent() {
+    return runMetricAnalysis('function-point', { useFileRefresh: false })
   }
 
   async function exportFunctionPointMarkdown() {
@@ -594,7 +598,11 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
   }
 
   async function runUseCasePointAnalysis() {
-    return runMetricAnalysis('use-case')
+    return runMetricAnalysis('use-case', { useFileRefresh: true })
+  }
+
+  async function runUseCasePointAnalysisCurrent() {
+    return runMetricAnalysis('use-case', { useFileRefresh: false })
   }
 
   async function exportUseCasePointMarkdown() {
@@ -670,9 +678,11 @@ export function useMetricModules({ selectedProjectId, activeMenu, downloadMarkdo
     runAiAnalysis,
     exportAiMarkdown,
     runFunctionPointAnalysis,
+    runFunctionPointAnalysisCurrent,
     loadFunctionPointAssist,
     exportFunctionPointMarkdown,
     runUseCasePointAnalysis,
+    runUseCasePointAnalysisCurrent,
     loadUseCasePointAssist,
     exportUseCasePointMarkdown,
     runModelAnalysis,

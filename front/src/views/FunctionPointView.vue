@@ -39,8 +39,8 @@ const props = defineProps({
 })
 
 defineEmits([
-  'analyze',
-  'assist',
+  'analyze-from-file',
+  'analyze-current',
   'export',
   'update-mode',
   'update-count',
@@ -278,11 +278,13 @@ const resultBarItems = computed(() => {
     <MetricActionHeader
       title="功能点度量"
       :loading="loading"
-      primary-text="计算"
+      primary-text="从文件计算"
       primary-loading-text="计算中..."
+      helper-text="按当前修改计算"
       export-text="导出"
       :export-disabled="!result"
-      @primary="$emit('analyze')"
+      @primary="$emit('analyze-from-file')"
+      @helper="$emit('analyze-current')"
       @export="$emit('export')"
     />
 

@@ -46,7 +46,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['analyze', 'assist', 'export', 'update-field', 'update-technical', 'update-environmental'])
+defineEmits(['analyze-from-file', 'analyze-current', 'export', 'update-field', 'update-technical', 'update-environmental'])
 
 const actorGroups = computed(() => [
   { key: 'simpleActors', label: '简单', value: props.form.simpleActors },
@@ -93,11 +93,13 @@ const resultBars = computed(() => {
     <MetricActionHeader
       title="用例点度量"
       :loading="loading"
-      primary-text="计算"
+      primary-text="从文件计算"
       primary-loading-text="计算中..."
+      helper-text="按当前修改计算"
       export-text="导出"
       :export-disabled="!result"
-      @primary="$emit('analyze')"
+      @primary="$emit('analyze-from-file')"
+      @helper="$emit('analyze-current')"
       @export="$emit('export')"
     />
 

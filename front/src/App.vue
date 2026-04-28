@@ -158,8 +158,10 @@ const {
   runAiAnalysis,
   exportAiMarkdown,
   runFunctionPointAnalysis,
+  runFunctionPointAnalysisCurrent,
   exportFunctionPointMarkdown,
   runUseCasePointAnalysis,
+  runUseCasePointAnalysisCurrent,
   exportUseCasePointMarkdown,
   runModelAnalysis,
   exportModelMarkdown
@@ -1127,7 +1129,8 @@ onMounted(async () => {
                   :form="functionPointForm"
                   :gsc-labels="gscLabels"
                   :gsc-total="functionPointGscTotal()"
-                  @analyze="runFunctionPointAnalysis"
+                  @analyze-from-file="runFunctionPointAnalysis"
+                  @analyze-current="runFunctionPointAnalysisCurrent"
                   @export="exportFunctionPointMarkdown"
                   @update-mode="updateFunctionPointMode"
                   @update-count="updateFunctionPointCount"
@@ -1150,7 +1153,8 @@ onMounted(async () => {
                   :environmental-labels="environmentalFactorLabels"
                   :technical-total="useCaseTechnicalTotal()"
                   :environmental-total="useCaseEnvironmentalTotal()"
-                  @analyze="runUseCasePointAnalysis"
+                  @analyze-from-file="runUseCasePointAnalysis"
+                  @analyze-current="runUseCasePointAnalysisCurrent"
                   @export="exportUseCasePointMarkdown"
                   @update-field="updateUseCaseField"
                   @update-technical="updateUseCaseTechnical"
